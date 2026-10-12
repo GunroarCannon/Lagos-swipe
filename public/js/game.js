@@ -1,5 +1,7 @@
-/* The game screen: the four bars, the swipeable card, and what happens when you choose.
- * LS.Game owns the run state (LS.Engine does the rules) and persists it after every card. */
+/* The game screen: the four bars, the card, the postcards, and what happens when you decide.
+ * LS.Game owns the run state (LS.Engine does the rules) and persists it after every card.
+ * The swipe is a small hand-rolled physics loop (no CSS transitions) so the card has weight:
+ * it follows the finger 1:1, tilts about a point below the card, snaps back on a damped spring, and is thrown on release. */
 (function (LS) {
   'use strict';
   const { h, $, clamp } = LS;
@@ -7,19 +9,20 @@
   const G = LS.Game = { s: null, card: null, busy: false, handle: null, look: null, meta: null };
 
   const ICONS = {
-    wallet: '<text x="24" y="31" text-anchor="middle" font-size="22" font-weight="700" class="ico-text">₦</text>',
-    heart: '<path d="M24 37 C10 28 9 15 17 14 C21 13.600 24 17 24 17 C24 17 27 13.600 31 14 C39 15 38 28 24 37 Z"/>',
-    hustle: '<rect x="11" y="19" width="26" height="17" rx="3"/><path d="M18 19v-4h12v4M11 27h26"/>',
-    peace: '<path d="M10 25 L24 13 L38 25"/><path d="M14 22v15h20V22"/><path d="M21 37v-8h6v8"/>',
+    wallet: '<text x="24" y="32" text-anchor="middle" font-size="24" font-weight="700" class="ico-text">₦</text>',
+    heart: '<path d="M24 38 C9 28 8 14 17 13 C21 12.500 24 16.500 24 16.500 C24 16.500 27 12.500 31 13 C40 14 39 28 24 38 Z"/>',
+    hustle: '<rect x="10" y="18" width="28" height="18" rx="3"/><path d="M18 18v-4h12v4M10 27h28"/>',
+    peace: '<path d="M9 25 L24 12 L39 25"/><path d="M13 22v16h22V22"/><path d="M21 38v-9h6v9"/>',
   };
-  const MOODS_PROFILE = ['neutral', 'happy', 'flirty', 'smug', 'happy', 'thinking'];
+  const MOODS_NEW = ['neutral', 'happy', 'flirty', 'smug', 'happy', 'thinking'];
+  const PLACE_ART = { housewarming: 'party', owambe: 'party', phone: 'phone', bus: 'bus', bank: 'cash', gym: 'work', church: 'church', work: 'work', mamaput: 'food', rooftop: 'rooftop', home: 'home' };
 
   // ------------------------------------------------------------------ HUD
   G.buildHud = function () {
     const bars = $('#bars'); bars.textContent = '';
     for (const k of LS.STAT_KEYS) {
       const el = h('div.bar', { 'data-stat': k, title: LS.STATS[k].blurb });
-      el.innerHTML = '<div class="badge"><div class="liquid"></div><svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="21" class="ring"/>' + ICONS[k] + '</svg><i class="dot"></i><b class="delta"></b></div><span class="lbl">' + LS.STATS[k].label + '</span>';
+      el.innerHTML = '<div class="badge"><i class="ring"></i><svg viewBox="0 0 48 48" class="face">' + ICONS[k] + '</svg><i class="dot"></i><b class="delta"></b></div><span class="lbl">' + LS.STATS[k].label + '</span>';
       bars.append(el);
     }
   };
@@ -28,20 +31,19 @@
     const s = G.s; if (!s) return;
     for (const k of LS.STAT_KEYS) {
       const el = $(`.bar[data-stat="${k}"]`);
-      const v = clamp(s.stats[k], 0, 100);
-      $('.liquid', el).style.height = v + '%';
+      el.style.setProperty('--v', clamp(s.stats[k], 0, 100).toFixed(1));
       el.classList.toggle('danger', E.isDanger(s, k));
     }
-    $('#hud-age').textContent = `Age ${s.age}`;
+    $('#hud-age').textContent = `AGE ${s.age}`;
     $('#hud-sub').textContent = `${LS.STATUS[s.status]} · ${LS.JOBS[s.job].title}`;
     $('#hud-money').textContent = E.moneyText(s);
     const n = LS.social.unread;
     const b = $('#inbox-badge'); b.hidden = !n; b.textContent = n > 9 ? '9+' : n;
-    const sup = G.superCount();
-    $('#super-count').textContent = sup;
+    const d = E.danger(s), box = $('#danger');
+    if (d && !s.over) { box.hidden = false; box.textContent = d.text; box.dataset.k = d.k; box.className = 'warn ' + (d.gap < 11 ? 'crit' : ''); } else box.hidden = true;
   };
 
-  G.superCount = () => (G.meta ? G.meta.freeSuper || 0 : 0) + (LS.social.superLikes || 0);
+  G.charmCount = () => (G.meta ? G.meta.charms || 0 : 0) + (LS.social.charms || 0);
 
   G.flashDeltas = function (deltas) {
     for (const [k, v] of Object.entries(deltas || {})) {
@@ -56,7 +58,7 @@
   function previewDots(opt) {
     for (const k of LS.STAT_KEYS) {
       const dot = $(`.bar[data-stat="${k}"] .dot`);
-      const v = opt ? Math.abs(opt.fx[k] || 0) : 0;
+      const v = opt ? Math.abs((opt.fx || {})[k] || 0) : 0;
       dot.className = 'dot' + (v >= 11 ? ' big' : v >= 5 ? ' mid' : v > 0 ? ' small' : '');
     }
   }
@@ -77,160 +79,235 @@
     return null;
   }
 
-  const SKYLINE = '<svg viewBox="0 0 300 160" class="skyline" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round">' +
-    '<path d="M10 140V90h24v50M34 140V60h30v80M64 140V100h20v40M84 140V40h34v100M118 140V80h26v50M144 140V50h20v90M164 140V95h30v45M194 140V70h28v70M222 140V105h24v35M246 140V85h38v55"/>' +
-    '<path d="M0 140h300"/><circle cx="240" cy="28" r="14"/></g></svg>';
-
-  G.showCard = function (card) {
-    const s = G.s, el = $('#card');
-    if (G.handle) { G.handle.destroy(); G.handle = null; }
-    G.card = card;
-    el.textContent = ''; el.className = 'card kind-' + card.kind + (card.kind === 'profile' && card.profile.kind === 'real' ? ' is-real' : '');
-    el.style.transform = ''; el.style.opacity = '';
-
-    const g = genomeFor(card);
-    const head = h('div.card-head', h('b.who', card.who ? card.who.name : 'Lagos'), h('span.sub', card.who && card.who.sub || ''));
-    const frame = h('div.portrait');
-    if (card.kind === 'profile' && card.profile.kind === 'real') head.append(h('span.tag.real', 'Real player'));
-    el.append(head, frame);
-
-    if (g) {
-      const mood = card.kind === 'profile' ? MOODS_PROFILE[LS.hash(card.profile.id) % MOODS_PROFILE.length] : card.mood;
-      G.handle = LS.portrait.live(frame, g, { width: 300, mood });
-      if (card.kind === 'profile' && card.profile.avatar) frame.append(h('img.avatar-chip', { src: card.profile.avatar, alt: '' }));
-    } else frame.innerHTML = SKYLINE;
-
-    if (card.kind === 'ending') {
-      el.append(h('h2.end-title', card.title));
-      el.append(h('p.line', card.text));
-      el.append(summary(s));
-    } else if (card.kind === 'profile') {
-      const p = card.profile, bits = [];
-      bits.push(h('span.chip.area', `${LS.areaLabel(p.area) || 'Lagos'}${p.km ? ' · ' + p.km + ' km' : ''}`));
-      for (const v of (p.vibes || []).slice(0, 3)) bits.push(h('span.chip', LS.VIBES[v] || v));
-      el.append(h('div.chips', bits));
-      el.append(h('p.line', p.line || (p.love && LS.LOVE[p.love] ? 'Love language: ' + LS.LOVE[p.love] : '“Hi.”')));
-      if (p.kind === 'real' && p.life) el.append(h('p.life', lifeLine(p.life)));
-    } else {
-      el.append(h('p.line', card.text));
-    }
-    el.append(h('div.stamp.stamp-r', card.kind === 'profile' ? 'LIKE' : '→'), h('div.stamp.stamp-l', card.kind === 'profile' ? 'PASS' : '←'));
-
-    $('#lbl-left').textContent = card.L.t; $('#lbl-right').textContent = card.R.t;
-    $('#btn-super').hidden = card.kind !== 'profile';
-    $('#choice-hint').textContent = ''; previewDots(null);
-    G.busy = false;
-
-    el.classList.remove('enter'); void el.offsetWidth; el.classList.add('enter');
-    // they speak the first sentence, if sound is on
-    if (G.handle && card.kind !== 'ending' && card.kind !== 'profile') {
-      const line = String(card.text).replace(/^["“{][^”"}]*[:：]\s*/, '').split(/(?<=[.!?…”])\s/)[0].slice(0, 90);
-      setTimeout(() => { if (G.card === card && LS.sound.enabled && LS.sound.unlocked) G.handle.say(line); }, 380);
-    }
-  };
-
   const lifeLine = l => {
     const job = LS.JOBS.find(j => j.id === l.job), home = LS.HOMES.find(x => x.id === l.home);
     return [job && job.title, home && home.title, l.status && LS.STATUS[l.status]].filter(Boolean).join(' · ');
   };
   LS.lifeLine = lifeLine;
 
-  function summary(s) {
-    return h('div.summary',
-      row('Age reached', s.age), row('Months lived', Math.floor(s.month)), row('Loves', s.loves),
-      row('Job', LS.JOBS[s.job].title), row('Home', LS.HOMES[s.home].title), row('Score', E.score(s)));
-    function row(k, v) { return h('div.srow', h('span', k), h('b', v)); }
+  const SKYLINE = '<svg viewBox="0 0 300 70" preserveAspectRatio="none" aria-hidden="true"><g fill="currentColor"><path d="M0 70V44h14V30h12v14h10V20h16v24h12V36h14V12h12v32h10V40h16V26h14v18h10V34h16V16h14v28h12V38h14V24h16v20h12V32h16v38z"/></g></svg>';
+
+  function summaryRows(s) {
+    const row = (k, v) => h('div.srow', h('span', k), h('b', v));
+    return h('div.summary', row('Age reached', s.age), row('Months lived', Math.floor(s.month)), row('Loves', s.loves), row('Job', LS.JOBS[s.job].title), row('Home', LS.HOMES[s.home].title), row('Score', E.score(s)));
   }
 
-  // ------------------------------------------------------------------ swiping
+  /** Who remembers you, strongest memory first: a line or two for the ending card. */
+  function rememberedBy(s) {
+    const out = [];
+    for (const [key, p] of Object.entries(s.people)) {
+      const mems = E.memories(s, key); if (!mems.length) continue;
+      const name = (LS.CAST[key] && LS.CAST[key].name) || p.name || (s.partner && s.partner.id === key && s.partner.name);
+      if (name) out.push({ name, t: mems[0].t, rel: p.rel });
+    }
+    return out.sort((a, b) => Math.abs(b.rel - 50) - Math.abs(a.rel - 50)).slice(0, 3);
+  }
+
+  G.showCard = function (card) {
+    const s = G.s, el = $('#card');
+    if (G.handle) { G.handle.destroy(); G.handle = null; }
+    G.card = card;
+    el.textContent = ''; el.className = 'card kind-' + card.kind + (card.lose ? ' lose' : '') + (card.kind === 'real' ? ' is-real' : '');
+    resetCard(el);
+
+    const g = genomeFor(card);
+    const placeArt = card.place && PLACE_ART[card.place];
+    const head = h('div.card-head', h('div.who-block', h('b.who', card.who ? card.who.name : 'Lagos'), h('span.sub', (card.who && card.who.sub) || '')),
+      card.kind === 'real' ? h('span.tag.real', 'Real player') : placeArt ? h('span.place', { html: LS.artSVG(placeArt) }) : null);
+    const pic = h('div.picture');
+    if (placeArt && LS.ART[placeArt]) pic.style.setProperty('--wash', `linear-gradient(${LS.ART[placeArt].c[0]}, ${LS.ART[placeArt].c[1]})`);
+    const frame = h('div.portrait');
+    pic.append(frame, h('div.skyline', { html: SKYLINE }));
+    el.append(head, pic);
+
+    if (g) {
+      const mood = card.kind === 'meet' || card.kind === 'real' ? MOODS_NEW[LS.hash(card.profile.id) % MOODS_NEW.length] : card.mood;
+      G.handle = LS.portrait.live(frame, g, { width: 300, mood: card.kind === 'meet' && card.temptation ? 'flirty' : mood });
+      if (card.profile && card.profile.avatar) pic.append(h('img.avatar-chip', { src: card.profile.avatar, alt: '' }));
+    } else {
+      frame.innerHTML = placeArt ? LS.artSVG(placeArt) : LS.artSVG('skyline');
+      frame.classList.add('art');
+    }
+
+    if (card.kind === 'ending') {
+      el.append(h('div.stamp-big', { class: 'stamp-big ' + (card.lose ? 'bad' : 'good') }, card.lose ? 'GAME OVER' : 'YOU MADE IT'));
+      el.append(h('h2.end-title', card.title), h('p.line', card.text), summaryRows(s));
+      const rb = rememberedBy(s);
+      if (rb.length) el.append(h('div.remembered', h('b', 'People remember'), rb.map(r => h('p', h('i', r.name + ': '), r.t))));
+    } else {
+      const cap = h('p.line', card.text);
+      el.append(cap);
+      if (card.kind === 'real' && card.profile.vibes && card.profile.vibes.length) el.append(h('div.chips', card.profile.vibes.slice(0, 3).map(v => h('span.chip', LS.VIBES[v] || v))));
+      // what this person remembers about you, a hint for the thoughtful
+      const pk = card.pkey, mems = pk ? E.memories(s, pk) : [];
+      if (mems.length && card.kind !== 'meet') el.append(h('p.recall', '“' + mems[0].t + '”'));
+    }
+    el.append(h('div.stamp.sl', { html: '' }), h('div.stamp.sr'));
+    $('.stamp.sl', el).textContent = card.L.t; $('.stamp.sr', el).textContent = card.R.t;
+
+    if (card.kind === 'ending') $('#toast').classList.remove('show');
+    setPostcards(card);
+    previewDots(null);
+    G.busy = false;
+    deal(el);
+
+    // they speak the first sentence, if sound is on
+    if (G.handle && card.kind !== 'ending') {
+      const line = String(card.text).replace(/^[^“"]*[“"]/, '').replace(/^[A-Za-z. ]+:\s*/, '').split(/(?<=[.!?…”])\s/)[0].slice(0, 90);
+      setTimeout(() => { if (G.card === card && LS.sound.enabled && LS.sound.unlocked) G.handle.say(line); }, 420);
+    }
+  };
+
+  function setPostcards(card) {
+    for (const side of ['L', 'R']) {
+      const pc = $('#pc-' + side), opt = card[side];
+      let label = opt.t, art = LS.artFor(opt, card);
+      if (card.kind === 'ending' && side === 'R' && card.lose && G.charmCount() > 0) { label = `Lucky Charm (${G.charmCount()})`; art = 'charm'; }
+      $('.pc-art', pc).innerHTML = LS.artSVG(art);
+      $('.pc-lbl', pc).textContent = label;
+      pc.classList.remove('lift', 'dim');
+    }
+    const box = $('#postcards'); box.classList.remove('swap'); void box.offsetWidth; box.classList.add('swap');
+  }
+
+  // ------------------------------------------------------------------ swipe physics
+  const P = { x: 0, y: 0, vx: 0, on: false, id: null, sx: 0, sy: 0, samples: [], side: null, raf: 0, w: 320 };
+  const stackEl = () => $('#stack');
+
+  function resetCard(el) {
+    cancelAnimationFrame(P.raf); P.x = P.y = P.vx = 0; P.side = null;
+    el.style.transform = ''; el.style.opacity = ''; el.classList.remove('dragging', 'deal');
+    stackEl().style.setProperty('--p', 0); stackEl().style.setProperty('--pa', 0);
+  }
+  function deal(el) {
+    void el.offsetWidth; el.classList.add('deal');
+    LS.sound.play('click3', { vol: 0.5, rate: 0.95 });
+  }
+
+  /** Put the card at x (px) and drive everything that follows it: tilt, stamps, postcards, the next card behind. */
+  function paint(x, y) {
+    const el = $('#card'), W = P.w;
+    P.x = x; P.y = y;
+    const rot = clamp(x / W * 17, -20, 20);
+    const lift = -Math.min(Math.abs(x) * 0.07, 16) + y * 0.35;
+    el.style.transform = `translate3d(${x.toFixed(1)}px, ${lift.toFixed(1)}px, 0) rotate(${rot.toFixed(2)}deg)`;
+    const p = clamp(x / (W * 0.3), -1, 1);
+    stackEl().style.setProperty('--p', p.toFixed(3)); stackEl().style.setProperty('--pa', Math.abs(p).toFixed(3));
+    const side = p > 0.4 ? 'R' : p < -0.4 ? 'L' : null;
+    if (side !== P.side) {
+      P.side = side;
+      if (side && G.card) { previewDots(G.card[side]); LS.sound.play('click4', { vol: 0.32 }); LS.sound.buzz(5); } else previewDots(null);
+      $('#pc-L').classList.toggle('lift', side === 'L'); $('#pc-R').classList.toggle('lift', side === 'R');
+      $('#pc-L').classList.toggle('dim', side === 'R'); $('#pc-R').classList.toggle('dim', side === 'L');
+    }
+  }
+
+  /** Damped spring back to centre: quick, a hair of overshoot, no float. */
+  function springBack(v0) {
+    cancelAnimationFrame(P.raf);
+    let x = P.x, y = P.y, vx = v0, vy = 0, last = performance.now();
+    const k = 900, c = 46;
+    const step = now => {
+      const dt = Math.min(0.03, (now - last) / 1000); last = now;
+      vx += (-k * x - c * vx) * dt; vy += (-k * y - c * vy) * dt; x += vx * dt; y += vy * dt;
+      if (Math.abs(x) < 0.4 && Math.abs(vx) < 12 && Math.abs(y) < 0.4) { paint(0, 0); return; }
+      paint(x, y); P.raf = requestAnimationFrame(step);
+    };
+    P.raf = requestAnimationFrame(step);
+  }
+
+  /** Throw the card off screen. Resolves when it's gone. */
+  function throwCard(side, v0) {
+    return new Promise(resolve => {
+      cancelAnimationFrame(P.raf);
+      const dir = side === 'R' ? 1 : -1, x0 = P.x, y0 = P.y, target = dir * (P.w * 1.25 + 90);
+      const dur = clamp(250 - Math.abs(v0) * 0.06, 150, 250), t0 = performance.now();
+      const step = now => {
+        const t = clamp((now - t0) / dur, 0, 1), e = 1 - Math.pow(1 - t, 2.2);
+        paint(x0 + (target - x0) * e, y0 + 30 * e);
+        $('#card').style.opacity = String(1 - Math.max(0, t - 0.6) * 2.4);
+        if (t < 1) P.raf = requestAnimationFrame(step); else resolve();
+      };
+      P.raf = requestAnimationFrame(step);
+    });
+  }
+
   G.bindSwipe = function () {
     const el = $('#card');
-    let sx = 0, sy = 0, dx = 0, dy = 0, on = false;
-    const hint = $('#choice-hint');
     el.addEventListener('pointerdown', e => {
-      if (G.busy || !G.card || e.button > 0) return;
-      on = true; sx = e.clientX; sy = e.clientY; dx = dy = 0;
-      el.setPointerCapture(e.pointerId); el.classList.add('dragging'); el.classList.remove('enter');
+      if (G.busy || !G.card || e.button > 0 || P.on) return;
+      cancelAnimationFrame(P.raf);
+      P.on = true; P.id = e.pointerId; P.sx = e.clientX - P.x; P.sy = e.clientY - P.y; P.samples = [[performance.now(), P.x]]; P.w = el.offsetWidth || 320;
+      el.setPointerCapture(e.pointerId); el.classList.add('dragging'); el.classList.remove('deal');
+      LS.sound.play('click', { vol: 0.2, rate: 1.3 });
     });
     el.addEventListener('pointermove', e => {
-      if (!on) return;
-      dx = e.clientX - sx; dy = e.clientY - sy;
-      el.style.transform = `translate(${dx}px, ${clamp(dy, -160, 60) * 0.5}px) rotate(${dx * 0.05}deg)`;
-      const p = clamp(dx / 110, -1, 1), side = p > 0.12 ? 'R' : p < -0.12 ? 'L' : null;
-      el.style.setProperty('--pr', Math.max(0, p)); el.style.setProperty('--pl', Math.max(0, -p));
-      const up = G.card.kind === 'profile' && dy < -70 && Math.abs(dx) < 70;
-      hint.textContent = up ? '★ Super like' : side ? G.card[side].t : '';
-      hint.className = 'choice-hint' + (side ? ' side-' + side : '') + (up ? ' up' : '') + (side || up ? ' on' : '');
-      previewDots(side && !up ? G.card[side] : null);
+      if (!P.on || e.pointerId !== P.id) return;
+      const x = e.clientX - P.sx, y = clamp(e.clientY - P.sy, -60, 60);
+      const now = performance.now();
+      P.samples.push([now, x]); while (P.samples.length > 2 && now - P.samples[0][0] > 90) P.samples.shift();
+      paint(x, y);
     });
     const end = e => {
-      if (!on) return; on = false;
-      el.classList.remove('dragging'); hint.className = 'choice-hint'; previewDots(null);
-      if (G.card.kind === 'profile' && dy < -120 && Math.abs(dx) < 80) return G.choose('R', { superLike: true });
-      if (Math.abs(dx) > 90) return G.choose(dx > 0 ? 'R' : 'L');
-      el.style.transform = ''; el.style.setProperty('--pr', 0); el.style.setProperty('--pl', 0);
+      if (!P.on || e.pointerId !== P.id) return;
+      P.on = false; el.classList.remove('dragging');
+      const a = P.samples[0], b = P.samples[P.samples.length - 1];
+      const v = b[0] > a[0] ? (b[1] - a[1]) / ((b[0] - a[0]) / 1000) : 0;   // px/s
+      const thr = P.w * 0.3;
+      if (P.x > thr || (v > 700 && P.x > 14)) G.choose('R', { v });
+      else if (P.x < -thr || (v < -700 && P.x < -14)) G.choose('L', { v });
+      else springBack(v);
     };
     el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
 
-    $('#btn-left').addEventListener('click', () => G.choose('L'));
-    $('#btn-right').addEventListener('click', () => G.choose('R'));
-    $('#btn-super').addEventListener('click', () => G.choose('R', { superLike: true }));
-    // preview dots on hover/focus of the buttons, like the drag
-    for (const [id, side] of [['#btn-left', 'L'], ['#btn-right', 'R']]) {
-      $(id).addEventListener('pointerenter', () => G.card && !G.busy && previewDots(G.card[side]));
-      $(id).addEventListener('pointerleave', () => previewDots(null));
+    for (const side of ['L', 'R']) {
+      const pc = $('#pc-' + side);
+      pc.addEventListener('click', () => G.choose(side, { tap: true }));
+      pc.addEventListener('pointerenter', () => { if (G.card && !G.busy && !P.on) previewDots(G.card[side]); });
+      pc.addEventListener('pointerleave', () => { if (!P.on) previewDots(null); });
     }
     document.addEventListener('keydown', e => {
       if ($('#sheet') && !$('#sheet').hidden) return;
-      if (e.key === 'ArrowLeft') G.choose('L'); else if (e.key === 'ArrowRight') G.choose('R');
+      if (e.key === 'ArrowLeft') G.choose('L', { tap: true }); else if (e.key === 'ArrowRight') G.choose('R', { tap: true });
     });
   };
 
   // ------------------------------------------------------------------ resolving a choice
-  G.choose = async function (side, extra = {}) {
+  G.choose = async function (side, o = {}) {
     if (G.busy || !G.card) return;
-    const card = G.card, s = G.s, el = $('#card');
-    if (extra.superLike) {
-      if (G.superCount() < 1) { G.toast('No super likes left. Get more in the menu.'); el.style.transform = ''; return; }
-    }
+    const card = G.card, s = G.s;
     G.busy = true;
     LS.sound.stop();
-    if (card.kind === 'ending') return G.restart();
 
-    // super likes: free ones first, then purchased packs (the server tracks those)
-    let sup = null;
-    if (extra.superLike) { if (G.meta.freeSuper > 0) { G.meta.freeSuper--; sup = 'free'; } else sup = 'paid'; }
+    // the ending card: start again, or spend a lucky charm to go on
+    if (card.kind === 'ending') {
+      if (side === 'R' && card.lose && G.charmCount() > 0) return G.useCharm(card, o);
+      LS.sound.play('click2', { vol: 0.6 });
+      await throwCard(side, o.v || 0);
+      return G.restart();
+    }
+
+    // a tap or key press "throws" from the centre with a little lean first
+    if (o.tap) { P.x = 0; P.y = 0; }
+    LS.sound.play('snap', { vol: 0.55, rate: side === 'R' ? 1.05 : 0.95 }); LS.sound.buzz(10);
+    $('#pc-' + side).classList.add('lift'); $('#pc-' + (side === 'R' ? 'L' : 'R')).classList.add('dim');
+
+    // real players: ask the server while the card flies. NPC meetings resolve locally.
+    let call = null;
+    if (card.kind === 'real') call = LS.social.swipe(card.profile.id, side === 'R' ? 'like' : 'pass');
+    const flying = throwCard(side, o.v || (o.tap ? (side === 'R' ? 900 : -900) : 0));
     let matched;
-    if (card.kind === 'profile' && card.profile.kind === 'real') {
-      const dir = side === 'R' ? (sup === 'paid' ? 'super' : 'like') : 'pass';
-      const call = LS.social.swipe(card.profile.id, dir);
-      if (side === 'R') { const r = await Promise.race([call, LS.sleep(3500).then(() => ({ match: false }))]); matched = !!r.match; }
-    } else if (sup === 'paid') { LS.social.superLikes = Math.max(0, LS.social.superLikes - 1); LS.api.post('/spend', { n: 1 }).catch(() => {}); }
+    if (call && side === 'R') { const r = await Promise.race([call, LS.sleep(3500).then(() => ({ match: false }))]); matched = !!r.match; }
 
-    // fly the card off
-    el.classList.add('leaving');
-    el.style.transform = `translate(${side === 'R' ? 520 : -520}px, ${extra.superLike ? -420 : 20}px) rotate(${side === 'R' ? 28 : -28}deg)`;
-    el.style.opacity = '0';
-
-    const before = Object.assign({}, s.stats);
-    const res = E.choose(s, card, side, { superLike: !!extra.superLike, matched });
-    void before;
+    const res = E.choose(s, card, side, { matched });
     G.flashDeltas(res.deltas);
     if (res.note) G.toast(res.note);
-    if (res.match && card.kind === 'profile') G.afterMatch(res.match);
-    G.updateHud();
-    G.save();
-    G.syncSoon(res);
-    await LS.sleep(240);
-    el.classList.remove('leaving');
-
-    if (res.ended) {
-      G.onEnd(res.ended);
-    }
+    if (res.match && card.kind === 'real') LS.sound.unlocked && LS.social.loadInbox();
+    G.updateHud(); G.save(); G.syncSoon();
+    await flying;
+    if (res.ended && res.ended !== 'victory') LS.sound.play('drop', { vol: 0.8 });
     G.next();
   };
-
-  G.afterMatch = function () { LS.sound.unlocked && LS.social.loadInbox(); };
 
   G.next = function () {
     const s = G.s;
@@ -240,28 +317,39 @@
     G.updateHud();
   };
 
-  G.onEnd = function (key) {
+  /** Record the finished life exactly once (score, endings, leaderboard). */
+  G.finish = function () {
     const s = G.s, m = G.meta;
+    if (!s || !s.over || s.recorded) return;
+    s.recorded = true;
     m.runs = (m.runs || 0) + 1;
-    m.endings = m.endings || {}; m.endings[key] = (m.endings[key] || 0) + 1;
+    m.endings = m.endings || {}; m.endings[s.over] = (m.endings[s.over] || 0) + 1;
     const score = E.score(s);
     if (score > (m.best || 0)) m.best = score;
     m.loves = (m.loves || 0) + s.loves;
-    m.freeSuper = Math.max(m.freeSuper || 0, 0);
     G.save();
     LS.platform.submitScore(score);
     LS.social.score(score, Math.floor(s.month), s.loves);
     LS.social.saveProfile(G.look, E.life(s));
   };
 
+  G.useCharm = async function (card, o) {
+    const s = G.s;
+    if (G.meta.charms > 0) G.meta.charms--;
+    else { LS.social.charms = Math.max(0, LS.social.charms - 1); LS.api.post('/spend', { n: 1 }).catch(() => {}); }
+    LS.sound.play('appear-online', { vol: 0.8 });
+    E.revive(s);
+    await throwCard('R', 0);
+    G.toast('The lucky charm holds. You’re back from the edge.');
+    G.save(); G.updateHud(); G.next();
+  };
+
   G.restart = function () {
-    const m = G.meta;
+    G.finish();
     G.s = E.newRun(LS.platform.player.name);
-    m.freeSuper = Math.max(m.freeSuper || 0, 3);
     G.save();
     G.busy = false;
     G.next();
-    G.updateHud();
   };
 
   // ------------------------------------------------------------------ persistence
@@ -273,14 +361,13 @@
   };
 
   let syncT = null;
-  G.syncSoon = function (res) {
+  G.syncSoon = function () {
     const s = G.s;
     const sig = [s.job, s.home, s.status, s.age].join('|');
     if (G._sig !== sig) { G._sig = sig; clearTimeout(syncT); syncT = setTimeout(() => LS.social.saveProfile(G.look, E.life(s)), 4000); }
-    void res;
   };
 
-  /** Pull the whole game screen up for the first time or after the look changes. */
+  /** Pull the corner portrait up for the first time or after the look changes. */
   G.refreshMe = function () {
     const cv = $('#me-canvas');
     if (G.look && G.look.genome) LS.portrait.paint(cv, G.look.genome);
@@ -289,7 +376,8 @@
   };
 
   G.init = function (look, run, meta) {
-    G.look = look; G.meta = meta; G.s = run && !run.over ? run : E.newRun(LS.platform.player.name);
+    G.look = look; G.meta = meta;
+    G.s = run && (!run.over || !run.recorded) ? E.fix(run) : E.newRun(LS.platform.player.name);
     G.buildHud(); G.bindSwipe(); G.refreshMe(); G.updateHud();
     G.next();
   };

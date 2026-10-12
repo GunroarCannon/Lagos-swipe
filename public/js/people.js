@@ -24,7 +24,7 @@
 
   // ------------------------------------------------------------------ the cast (fixed faces you come to know)
   const CAST = {
-    mama: { name: 'Mama', who: 'Your mother', arch: 'yoruba', g: 'fem', years: 57, role: 'market-trader', seed: 1101, over: { headwear: 'gele', clothing: 'buba', pattern: 'ankara' } },
+    mama: { name: 'Mama', who: 'Your mother', arch: 'awori', g: 'fem', years: 57, role: 'market-trader', seed: 1101, over: { headwear: 'gele', clothing: 'buba', pattern: 'ankara' } },
     tobi: { name: 'Tobi', who: 'Best friend', arch: 'lagosian', g: 'masc', years: 25, seed: 1102, over: { hairStyle: 'fade', facialHair: 'stubble', headwear: 'none', clothing: 'hoodie' } },
     adaeze: { name: 'Adaeze', who: 'Close friend', arch: 'igbo', g: 'fem', years: 26, seed: 1103, over: { hairStyle: 'knotless-braids', headwear: 'none', clothing: 'buba' } },
     landlord: { name: 'Alhaji Bello', who: 'Landlord', arch: 'hausa', g: 'masc', years: 58, seed: 1104, over: { headwear: 'kufi', clothing: 'babanriga', facialHair: 'full-beard' } },
@@ -36,14 +36,15 @@
     ex: { name: 'Dayo', who: 'Your ex', arch: 'yoruba', g: 'masc', years: 28, seed: 1110, over: { hairStyle: 'waves', clothing: 'kaftan', headwear: 'none' } },
     chidi: { name: 'Chidi', who: 'Crypto bro', arch: 'igbo', g: 'masc', years: 27, seed: 1111, over: { eyewear: 'sunglasses', hairStyle: 'fade', clothing: 'graphic-tee', headwear: 'none' } },
     zainab: { name: 'Zainab', who: 'Influencer', arch: 'hausa', g: 'fem', years: 24, role: 'influencer', seed: 1112, over: { headwear: 'none', hairStyle: 'frontal-wig', eyewear: 'sunglasses' } },
-    doctor: { name: 'Dr. Okafor', who: 'Doctor', arch: 'igbo', g: 'fem', years: 41, role: 'doctor', seed: 1113, over: { headwear: 'none' } },
-    mechanic: { name: 'Baba Tunde', who: 'Mechanic', arch: 'yoruba', g: 'masc', years: 51, role: 'builder', seed: 1114, over: { facialHair: 'short-beard' } },
-    neighbour: { name: 'Mama Chika', who: 'Neighbour', arch: 'igbo', g: 'fem', years: 50, seed: 1115, over: { headwear: 'headwrap', clothing: 'wrap', pattern: 'ankara' } },
-    sister: { name: 'Sis Temi', who: 'Little sister', arch: 'yoruba', g: 'fem', years: 19, seed: 1116, over: { hairStyle: 'bantu-knots', headwear: 'none', clothing: 'hoodie' } },
-    dj: { name: 'DJ Smoke', who: 'Party starter', arch: 'niger-delta', g: 'masc', years: 30, role: 'musician', seed: 1117, over: { eyewear: 'sunglasses', hairStyle: 'dreadlocks' } },
+    doctor: { name: 'Dr. Etim', who: 'Doctor', arch: 'efik', g: 'fem', years: 41, role: 'doctor', seed: 1113, over: { headwear: 'none' } },
+    mechanic: { name: 'Baba Tunde', who: 'Mechanic', arch: 'ijebu', g: 'masc', years: 51, role: 'builder', seed: 1114, over: { facialHair: 'short-beard' } },
+    neighbour: { name: 'Mama Chika', who: 'Neighbour', arch: 'ikwerre', g: 'fem', years: 50, seed: 1115, over: { headwear: 'headwrap', clothing: 'wrap', pattern: 'ankara' } },
+    sister: { name: 'Sis Temi', who: 'Little sister', arch: 'awori', g: 'fem', years: 19, seed: 1116, over: { hairStyle: 'bantu-knots', headwear: 'none', clothing: 'hoodie' } },
+    dj: { name: 'DJ Smoke', who: 'Party starter', arch: 'ijaw', g: 'masc', years: 30, role: 'musician', seed: 1117, over: { eyewear: 'sunglasses', hairStyle: 'dreadlocks' } },
     banker: { name: 'Ngozi from the bank', who: 'Bank manager', arch: 'igbo', g: 'fem', years: 38, role: 'banker', seed: 1118, over: { headwear: 'none', hairStyle: 'bob' } },
     officer: { name: 'Officer Musa', who: 'Checkpoint', arch: 'hausa', g: 'masc', years: 39, role: 'police', seed: 1119 },
-    corper: { name: 'Corper Femi', who: 'Fellow corper', arch: 'yoruba', g: 'masc', years: 24, role: 'corper', seed: 1120, over: { headwear: 'baseball-cap' } },
+    corper: { name: 'Corper Femi', who: 'Fellow corper', arch: 'egba', g: 'masc', years: 24, role: 'corper', seed: 1120, over: { headwear: 'baseball-cap' } },
+    bukola: { name: 'Mrs. Bukola', who: 'HR manager', arch: 'ijebu', g: 'fem', years: 41, role: 'banker', seed: 1121, over: { headwear: 'none', hairStyle: 'bob', eyewear: 'round-glasses' } },
   };
   LS.CAST = CAST;
   const castCache = {};

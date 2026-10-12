@@ -6,6 +6,7 @@ win.window = win; win.localStorage = { getItem: () => null, setItem() {} };
 vm.createContext(win);
 for (const f of ['util', 'data', 'people', 'cards', 'engine']) vm.runInContext(fs.readFileSync(path.join(__dirname, '../public/js', f + '.js'), 'utf8'), win, { filename: f });
 const LS = win.LS;
+LS.lifeLine = () => '';
 // no portrait engine here: stub what the engine asks for
 LS.makeProfile = seed => { const r = LS.rng('p' + seed); const type = r.weighted({ sweet: 40, baller: 11, broke: 11, catfish: 8, scammer: 5, clingy: 11, flaky: 12 });
   return { id: 'n' + seed, kind: 'npc', name: 'P' + seed, age: 25, genome: { archetype: 'yoruba' }, realGenome: { archetype: 'yoruba' }, job: 'banker', type, line: 'hi', pick: 0 }; };
@@ -17,7 +18,11 @@ for (const c of LS.CARDS) {
   assert.ok(c.text && c.L.t && c.R.t, 'card incomplete ' + c.id);
   for (const k of Object.keys(Object.assign({}, c.L.fx, c.R.fx))) assert.ok(LS.STAT_KEYS.includes(k), c.id + ' bad stat ' + k);
   if (c.who && c.who !== 'PARTNER') assert.ok(LS.CAST[c.who], c.id + ' unknown cast ' + c.who);
-  for (const side of [c.L, c.R]) for (const p of side.ex.push || []) assert.ok(LS.CARDS.find(x => x.id === p.id), c.id + ' pushes unknown ' + p.id);
+  for (const side of [c.L, c.R]) {
+    for (const p of side.ex.push || []) assert.ok(LS.CARDS.find(x => x.id === p.id), c.id + ' pushes unknown ' + p.id);
+    if (side.ex.go) assert.ok(LS.CARDS.find(x => x.id === side.ex.go), c.id + ' goes to unknown ' + side.ex.go);
+    if (side.ex.who && side.ex.who !== 'PARTNER') assert.ok(LS.CAST[side.ex.who], c.id + ' unknown who ' + side.ex.who);
+  }
 }
 for (const e of Object.values(LS.ENDINGS)) assert.ok(LS.CAST[e.who]);
 

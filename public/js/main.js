@@ -13,7 +13,7 @@
     await LS.platform.init();
     await ready;
     const saved = LS.Game.load();
-    const meta = Object.assign({ freeSuper: 3, runs: 0, best: 0, endings: {} }, saved && saved.meta);
+    const meta = Object.assign({ charms: 1, runs: 0, best: 0, endings: {} }, saved && saved.meta);
     LS.look = saved && saved.look;
     note.textContent = LS.platform.mode === 'dev' ? 'Guest mode (open inside Lagos Life to play as you)' : `Playing as ${LS.platform.player.name}`;
     go.disabled = false; go.textContent = saved && saved.run && !saved.run.over ? 'Continue' : 'Start';

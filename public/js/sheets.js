@@ -56,7 +56,7 @@
     const J = LS.JOBS[s.job], H = LS.HOMES[s.home];
     const rows = h('div.rows',
       lifeRow('Work', J.title, J.blurb), lifeRow('Home', H.title, H.blurb),
-      s.partner ? h('div.lrow', h('div.k', 'Partner'), h('div.v', h('div.mini', thumb(Object.assign({}, s.partner.genome), 44)), h('div', h('b', s.partner.name), h('small', LS.STATUS[s.status])))) : lifeRow('Partner', 'None yet', 'Keep swiping.'),
+      s.partner ? h('div.lrow', h('div.k', 'Partner'), h('div.v', h('div.mini', thumb(Object.assign({}, s.partner.genome), 44)), h('div', h('b', s.partner.name), h('small', LS.STATUS[s.status])))) : lifeRow('Partner', 'None yet', 'Owambes are good for that.'),
       lifeRow('Friends', String(s.friends), s.friends >= 5 ? 'A proper crew.' : 'Go to more owambes.'));
     const bars = h('div.statrows', LS.STAT_KEYS.map(k => h('div.srow2', h('span', LS.STATS[k].label), h('div.track', h('i', { style: { width: Math.round(s.stats[k]) + '%' }, class: 'fill f-' + k })), h('small', LS.STATS[k].blurb))));
     const meta = G.meta;
@@ -64,6 +64,7 @@
     const legacy = h('div.legacy', h('div', 'Runs ', h('b', meta.runs || 0)), h('div', 'Best ', h('b', meta.best || 0)), h('div', 'Endings ', h('b', `${found}/${Object.keys(LS.ENDINGS).length}`)));
     const actions = h('div.actions',
       h('button.btn.primary', { type: 'button', onclick: () => LS.customize({ intro: false }) }, 'Customise your look'),
+      h('button.btn', { type: 'button', onclick: () => LS.showPeople() }, 'People & memories'),
       h('button.btn', { type: 'button', onclick: () => LS.showBoard() }, 'Leaderboard'));
     Sheet.open('Your life', h('div', hero, rows, section('How you’re doing', bars), legacy, actions));
   };
@@ -73,7 +74,7 @@
   LS.showInbox = async function () {
     const body = h('div.inbox', h('p.muted', 'Loading…'));
     Sheet.open('Inbox', body, { onClose: () => LS.Game.updateHud() });
-    if (!LS.api.online && !LS.social.inbox) { body.textContent = ''; body.append(h('p.muted', 'You’re offline. Matches and messages will show up when you’re back.')); return; }
+    if (!LS.api.online && !LS.social.inbox) { body.textContent = ''; body.append(h('p.muted', 'You’re offline. Connections and messages will show up when you’re back.')); return; }
     const inbox = await LS.social.loadInbox();
     LS.social.markRead(); LS.Game.updateHud();
     paintInbox(body, inbox);
@@ -81,15 +82,15 @@
 
   function paintInbox(body, inbox) {
     body.textContent = '';
-    if (!inbox) { body.append(h('p.muted', 'Nothing yet. Swipe on real players when they show up in your deck.')); return; }
+    if (!inbox) { body.append(h('p.muted', 'Nothing yet. Real players show up around the city: say hello when they do.')); return; }
     const m = inbox.matches || [];
-    body.append(h('p.lead', `${inbox.likedYou || 0} ${inbox.likedYou === 1 ? 'person has' : 'people have'} liked you.`));
-    body.append(section(`Matches (${m.length})`,
+    body.append(h('p.lead', `${inbox.likedYou || 0} ${inbox.likedYou === 1 ? 'person has' : 'people have'} said hello to you.`));
+    body.append(section(`Connections (${m.length})`,
       m.length ? h('div.list', m.map(x => h('button.item', { type: 'button', onclick: () => showChat(x.profile) },
         thumb(x.profile.genome, 52),
         h('div.item-text', h('b', x.profile.name), h('small', x.last ? (x.last.from === x.profile.id ? '' : 'You: ') + (LS.CHAT[x.last.k] || '…') : 'Say hi!')),
         x.unread ? h('i.dot-new') : null)))
-        : h('p.muted', 'No matches yet. When someone you like likes you back, they’ll show up here.')));
+        : h('p.muted', 'No connections yet. When you and another player say hello to each other, they show up here.')));
     const n = inbox.notifs || [];
     body.append(section('News', n.length ? h('div.list', n.map(x => h('div.item.static', { class: x.unread ? 'unread' : '' }, h('div.item-text', h('b', LS.notifText(x)), h('small', ago(x.at)))))) : h('p.muted', 'Quiet for now.')));
   }
@@ -99,7 +100,7 @@
     const refresh = async () => {
       const list = await LS.social.chat(profile.id);
       msgs.textContent = '';
-      if (!list.length) msgs.append(h('p.muted.center', `You matched with ${profile.name}. Break the ice!`));
+      if (!list.length) msgs.append(h('p.muted.center', `You and ${profile.name} are connected. Break the ice!`));
       for (const m of list) msgs.append(h('div.msg', { class: m.from === profile.id ? 'them' : 'me' }, LS.CHAT[m.k] || '…', h('small', ago(m.at))));
       msgs.scrollTop = msgs.scrollHeight;
     };
@@ -136,32 +137,22 @@
     const setSound = () => { sound.textContent = 'Sound: ' + (LS.sound.enabled ? 'on' : 'off'); };
     sound.onclick = () => { LS.sound.set(!LS.sound.enabled); setSound(); };
     setSound();
-    const seg = h('div.segment', Object.entries(LS.SHOW).map(([k, label]) => {
-      const b = h('button', { type: 'button', class: G.look.bio && G.look.bio.looking === k ? 'on' : '', onclick: () => {
-        G.look.bio = Object.assign({}, G.look.bio, { looking: k }); G.save(); LS.social.buffer = [];
-        $$$('button', seg).forEach(x => x.classList.remove('on')); b.classList.add('on');
-        LS.social.saveProfile(G.look, E.life(G.s));
-      } }, label);
-      return b;
-    }));
     const online = LS.api.online;
     const body = h('div.menu',
       section('Sound', sound),
-      section('Show me', seg),
-      section('Super likes', h('p.muted', `You have ${G.superCount()}. Swipe a profile up (or tap ★) to boost your chance.`),
+      section('Lucky charms', h('p.muted', `A lucky charm pulls you back once when a bar hits the edge. You have ${G.charmCount()}.`),
         h('button.btn.primary', { type: 'button', onclick: buy }, 'Get 5 for ₦100')),
-      section('Play', h('div.actions', h('button.btn', { type: 'button', onclick: () => LS.showBoard() }, 'Leaderboard'),
+      section('Play', h('div.actions', h('button.btn', { type: 'button', onclick: () => LS.showPeople() }, 'People & memories'), h('button.btn', { type: 'button', onclick: () => LS.showBoard() }, 'Leaderboard'),
         h('button.btn', { type: 'button', onclick: () => { if (confirm('Start a new life? This one ends here.')) { Sheet.close(); G.restart(); } } }, 'New life'))),
-      section('About', h('p.muted', 'Lagos Swipe is a life sim in Reigns format. Swipe cards left or right. Keep Wallet, Heart, Hustle and Peace off the ends, and get to 35.'),
-        h('p.muted', online ? 'Online: other players can appear in your deck.' : 'Offline: playing with the Lagos crowd only.'),
+      section('About', h('p.muted', 'Lagos Swipe is a life sim. Decide with a swipe or a tap on a postcard. Keep Wallet, Heart, Hustle and Peace off the ends, look after the people who matter, and reach 35.'),
+        h('p.muted', online ? 'Online: other real players can turn up in your day.' : 'Offline: playing with the Lagos crowd only.'),
         h('p.fine', 'Portraits by portrait-js.')));
     Sheet.open('Menu', body);
     async function buy() {
-      try { const r = await LS.social.buySuperLikes('super_likes_5'); G.toast(`Super likes: ${r.superLikes}`); G.updateHud(); Sheet.close(); }
+      try { const r = await LS.social.buyCharms('lucky_charms_5'); G.toast(`Lucky charms: ${G.charmCount()}`); G.updateHud(); Sheet.close(); }
       catch (e) { G.toast(e && e.code === 'cancelled' ? 'No worries.' : 'Couldn’t complete the purchase.'); }
     }
   };
-  const $$$ = (s, r) => Array.from(r.querySelectorAll(s));
 
   // ------------------------------------------------------------------ leaderboard
   LS.showBoard = async function () {
@@ -177,5 +168,44 @@
     if (v && v.top && v.top.length) {
       body.append(section('Lagos Life board', h('div.list', v.top.slice(0, 20).map(t => h('div.item.static', h('b.rank', '#' + t.rank), h('div.item-text', h('b', t.name)), h('b.pts', t.score))))));
     }
+  };
+})(window.LS = window.LS || {});
+
+// ---------------------------------------------------------------- people & memories
+(function (LS) {
+  'use strict';
+  const { h } = LS;
+  const E = LS.Engine;
+
+  const feel = r => (r >= 80 ? 'Devoted' : r >= 62 ? 'Close' : r >= 45 ? 'Friendly' : r >= 28 ? 'Distant' : 'Cold');
+  const hue = r => (r >= 62 ? 'good' : r >= 45 ? 'ok' : 'bad');
+
+  /** Everyone who knows you, how they feel, and what they remember. */
+  LS.showPeople = function () {
+    const G = LS.Game, s = G.s;
+    const rows = [];
+    for (const [key, p] of Object.entries(s.people)) {
+      const mems = E.memories(s, key);
+      const cast = LS.CAST[key];
+      const name = cast ? cast.name : p.name;
+      if (!name) continue;
+      const genome = cast ? LS.castGenome(key) : p.genome && Object.assign({}, p.genome, LS.LOOK);
+      const sub = cast ? cast.who : p.job ? LS.jobLabel(p.job) : 'Someone you met';
+      rows.push({ key, name, sub, genome, rel: p.rel, mems, partner: !!(s.partner && s.partner.id === key) });
+    }
+    rows.sort((a, b) => (b.partner - a.partner) || (b.mems.length - a.mems.length) || Math.abs(b.rel - 50) - Math.abs(a.rel - 50));
+    const body = h('div.people');
+    if (!rows.length) body.append(h('p.muted', 'Nobody knows you yet. What you do around people is remembered.'));
+    for (const r of rows) {
+      const item = h('div.person',
+        h('div.thumb', r.genome ? LS.portrait.still(r.genome, 56) : null),
+        h('div.person-text',
+          h('b', r.name, r.partner ? ' ♥' : ''), h('small', r.sub),
+          h('div.meter', h('i', { class: 'fill ' + hue(r.rel), style: { width: Math.round(r.rel) + '%' } })),
+          h('small.feel', feel(r.rel)),
+          r.mems.slice(0, 3).map(m => h('p.mem', '“' + m.t + '”'))));
+      body.append(item);
+    }
+    if (LS.sheet.isOpen) LS.sheet.push('People & memories', body); else LS.sheet.open('People & memories', body);
   };
 })(window.LS = window.LS || {});

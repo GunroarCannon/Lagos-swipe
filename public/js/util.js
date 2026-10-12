@@ -37,7 +37,7 @@
     const m = /^([a-z0-9]+)?((?:[.#][\w-]+)*)$/i.exec(sel) || [];
     const el = document.createElement(m[1] || 'div');
     for (const part of (m[2] || '').match(/[.#][\w-]+/g) || []) { if (part[0] === '#') el.id = part.slice(1); else el.classList.add(part.slice(1)); }
-    if (attrs && (typeof attrs !== 'object' || attrs.nodeType || Array.isArray(attrs))) { kids.unshift(attrs); attrs = null; }
+    if (attrs != null && (typeof attrs !== 'object' || attrs.nodeType || Array.isArray(attrs))) { kids.unshift(attrs); attrs = null; }
     for (const [k, v] of Object.entries(attrs || {})) {
       if (v == null || v === false) continue;
       if (k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2), v);

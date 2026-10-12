@@ -6,10 +6,10 @@
 
   // ------------------------------------------------------------------ the four bars
   LS.STATS = {
-    wallet: { label: 'Wallet', blurb: 'Cash and what you can afford.', low: 'Broke', high: 'Loaded' },
-    heart: { label: 'Heart', blurb: 'Love, friends, people who show up.', low: 'Lonely', high: 'Smothered' },
-    hustle: { label: 'Hustle', blurb: 'Career, status and the grind.', low: 'Nobody', high: 'Too big' },
-    peace: { label: 'Peace', blurb: 'Health, family and your sanity.', low: 'Frazzled', high: 'Pressured' },
+    wallet: { label: 'Wallet', blurb: 'Cash and what you can afford.', low: 'Broke', high: 'Loaded', lowWarn: 'Your wallet is nearly empty. One bad month and you’re broke.', highWarn: 'So much money that people (and the EFCC) are starting to notice.' },
+    heart: { label: 'Heart', blurb: 'Love, friends, people who show up.', low: 'Lonely', high: 'Smothered', lowWarn: 'You’re running out of people who care. Loneliness is close.', highWarn: 'Too many people need too much of you. You’re being smothered.' },
+    hustle: { label: 'Hustle', blurb: 'Career, status and the grind.', low: 'Nobody', high: 'Too big', lowWarn: 'Your career is stalling. People are forgetting your name.', highWarn: 'You’re getting so big that one scandal could bring it all down.' },
+    peace: { label: 'Peace', blurb: 'Health, family and your sanity.', low: 'Frazzled', high: 'Pressured', lowWarn: 'You’re frazzled. Another bad week and you might just japa.', highWarn: 'Life is suspiciously calm. Everyone wants to settle you down.' },
   };
   LS.STAT_KEYS = ['wallet', 'heart', 'hustle', 'peace'];
 
@@ -60,7 +60,25 @@
     kenyan: ['Otieno', 'Mwangi', 'Kamau', 'Kipchoge'], 'south-african': ['Thabo', 'Sipho', 'Bheki', 'Lwazi'], ethiopian: ['Abebe', 'Dawit', 'Henok'],
     senegalese: ['Cheikh', 'Ousmane', 'Modou'], congolese: ['Patrick', 'Jean-Luc', 'Trésor'],
   };
+  const NAMES_MORE = {
+    ijaw: [['Ebiere', 'Tamara', 'Preye', 'Ere', 'Ibiso', 'Seiyefa'], ['Ovie', 'Tari', 'Ebi', 'Fiye', 'Timi', 'Ebikabowei']],
+    urhobo: [['Ejiro', 'Oghenekevwe', 'Ufuoma', 'Rukevwe', 'Esiri'], ['Oghenekaro', 'Ovie', 'Tega', 'Akpevwe', 'Ejiro']],
+    itsekiri: [['Ojuolape', 'Omamuzo', 'Jemine', 'Oritsetimeyin'], ['Oritsejafor', 'Tobore', 'Ejiro', 'Jemine']],
+    ogoni: [['Barinem', 'Nwibari', 'Naadu', 'Bariyiga'], ['Barinua', 'Saro', 'Ledum', 'Barido']],
+    efik: [['Ekaette', 'Affiong', 'Atim', 'Mfon', 'Ini'], ['Ekong', 'Okon', 'Asuquo', 'Edet', 'Etim']],
+    ibibio: [['Idara', 'Nsikak', 'Ima', 'Uduak', 'Enobong'], ['Ubong', 'Effiong', 'Ekemini', 'Inyang', 'Akan']],
+    tiv: [['Doosuur', 'Mdecember', 'Mimidoo', 'Ngunan', 'Ngohide'], ['Terkimbi', 'Tersoo', 'Aondona', 'Terver', 'Aondofa']],
+    idoma: [['Ene', 'Ojoma', 'Ochanya', 'Ejura'], ['Ojochenemi', 'Ojonugwa', 'Ogwu', 'Adoga']],
+    igala: [['Ojoma', 'Ene', 'Onyilo', 'Eneojo'], ['Ojonugwa', 'Adejoh', 'Attah', 'Ojodale']],
+    ebira: [['Ozavize', 'Amina', 'Ohunene', 'Hadiza'], ['Ozovehe', 'Abdul', 'Ahmed', 'Idris']],
+    berom: [['Ngo', 'Ladi', 'Nanle', 'Gyang'], ['Dantong', 'Choji', 'Gyang', 'Bitrus']],
+    nupe: [['Hajiya', 'Zainab', 'Aishatu', 'Maimuna'], ['Abubakar', 'Liman', 'Ndayako', 'Mohammed']],
+    gbagyi: [['Hajara', 'Ladi', 'Zainab', 'Naomi'], ['Danladi', 'Musa', 'Yakubu', 'Ibrahim']],
+  };
+  const ALIAS = { awori: 'yoruba', ijebu: 'yoruba', egba: 'yoruba', ikwerre: 'igbo', 'niger-delta': 'ijaw', 'efik-ibibio': 'efik', 'middle-belt': 'tiv' };
+  for (const [k, [f, m]] of Object.entries(NAMES_MORE)) { FEM[k] = f; MASC[k] = m; }
   LS.names = (arch, gender, r) => {
+    arch = ALIAS[arch] || arch;
     const t = (gender === 'masc' ? MASC : FEM)[arch] || (gender === 'masc' ? MASC : FEM).yoruba;
     return r ? r.pick(t) : LS.pick(t);
   };

@@ -49,9 +49,12 @@
       body.textContent = '';
       const g = work.genome;
       if (tab === 'face') {
-        const arch = {}; for (const id of Object.keys(PM.NAIJA_MIX)) arch[id] = (PM.get('archetypes', id) || {}).label || id;
+        const lab = id => (PM.get('archetypes', id) || {}).label || id;
+        const arch = {}; for (const id of PM.NAIJA_HERITAGES || Object.keys(PM.NAIJA_MIX)) arch[id] = lab(id);
+        const more = {}; for (const id of PM.OTHER_AFRICAN || []) more[id] = lab(id);
         body.append(LS.ui.section('Presentation', h('div.segment', [['fem', 'Femme'], ['andro', 'Andro'], ['masc', 'Masc']].map(([k, l]) => h('button', { type: 'button', class: g.gender === k ? 'on' : '', onclick: () => { regen({ gender: k }); } }, l)))));
         body.append(LS.ui.section('Heritage', chipRow(arch, g.archetype, k => regen({ archetype: k }))));
+        body.append(LS.ui.section('More of Africa', chipRow(more, g.archetype, k => regen({ archetype: k }))));
         body.append(LS.ui.section('Face', ...SLIDERS.map(([k, label, a, b]) => h('label.slider', h('span', label), h('input', { type: 'range', min: a, max: b, step: 0.01, value: g[k] != null ? g[k] : 1, oninput: e => set(k, +e.target.value) })))));
         body.append(LS.ui.section('Extras',
           chipRow({ none: 'No glasses', 'round-glasses': 'Round', 'square-glasses': 'Square', sunglasses: 'Shades', aviators: 'Aviators', 'cat-eye': 'Cat-eye' }, g.eyewear || 'none', k => { set('eyewear', k); drawTab(); }),

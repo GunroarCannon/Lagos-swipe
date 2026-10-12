@@ -5,7 +5,7 @@
   'use strict';
   const S = LS.social = {
     buffer: [],            // real players waiting to be drawn into the deck
-    unread: 0, superLikes: 0, inbox: null, lastNotifAt: 0,
+    unread: 0, charms: 0, inbox: null, lastNotifAt: 0,
     listeners: [],
     onChange(f) { S.listeners.push(f); },
     _emit(kind, data) { S.listeners.forEach(f => { try { f(kind, data); } catch (e) { console.error(e); } }); },
@@ -13,7 +13,7 @@
     async me() {
       try {
         const r = await LS.api.get('/me');
-        S.unread = r.unread || 0; S.superLikes = r.superLikes || 0; S.profile = r.profile;
+        S.unread = r.unread || 0; S.charms = r.charms || 0; S.profile = r.profile;
         S._emit('me', r);
         return r;
       } catch (e) { return null; }
@@ -38,7 +38,7 @@
 
     /** Returns { match: bool, profile? } for a real player; never throws. */
     async swipe(target, dir) {
-      try { const r = await LS.api.post('/swipe', { target, dir }); if (r.superLikes != null) S.superLikes = r.superLikes; return r; }
+      try { const r = await LS.api.post('/swipe', { target, dir }); if (r.charms != null) S.charms = r.charms; return r; }
       catch (e) { return { match: false, error: e.code || 'error' }; }
     },
 
@@ -54,11 +54,11 @@
     async leaderboard() { try { return (await LS.api.get('/leaderboard')).top; } catch (e) { return null; } },
     async score(score, days, loves) { try { return await LS.api.post('/score', { score, days, loves }); } catch (e) { return null; } },
 
-    /** Buy a pack of super likes through the world's pay sheet; the server verifies before crediting. */
-    async buySuperLikes(productId = 'super_likes_5') {
+    /** Buy a pack of lucky charms through the world's pay sheet; the server verifies before crediting. */
+    async buyCharms(productId = 'lucky_charms_5') {
       const p = await LS.platform.purchase(productId);
       const r = await LS.api.post('/claim', { purchaseId: p.purchaseId, productId });
-      S.superLikes = r.superLikes; S._emit('me');
+      S.charms = r.charms; S._emit('me');
       return r;
     },
 
@@ -82,9 +82,8 @@
   LS.notifText = n => {
     const who = n.from && n.from.name ? n.from.name : 'Someone';
     switch (n.t) {
-      case 'like': return `${who} liked you.`;
-      case 'super': return `${who} super-liked you! ⭐`;
-      case 'match': return `You and ${who} matched!`;
+      case 'like': return `${who} said hello to you.`;
+      case 'match': return `You and ${who} are now connected!`;
       case 'msg': return `${who}: “${LS.CHAT[n.k] || '…'}”`;
       default: return who;
     }

@@ -62,13 +62,12 @@ const bio = { job: 'banker', area: 'lekki', vibes: ['suya', 'gym'], looking: 'al
   assert.equal(inb2.matches[0].last.k, 'hi');
   assert.equal(inb2.matches[0].unread, false); // read by opening the chat
 
-  // super likes need inventory; dev claim credits and is idempotent
-  assert.equal((await call('POST', '/api/swipe', A, { target: 'd_chidi003', dir: 'super' })).status, 402);
-  const claim = await call('POST', '/api/claim', A, { purchaseId: 'dev_abc123', productId: 'super_likes_5' });
-  assert.equal(claim.superLikes, 5);
-  assert.equal((await call('POST', '/api/claim', A, { purchaseId: 'dev_abc123', productId: 'super_likes_5' })).superLikes, 5);
-  assert.equal((await call('POST', '/api/swipe', A, { target: 'd_chidi003', dir: 'super' })).superLikes, 4);
-  assert.equal((await call('GET', '/api/inbox', C)).notifs[0].t, 'super');
+  // lucky charms: spending needs inventory; dev claim credits and is idempotent
+  assert.equal((await call('POST', '/api/spend', A, { n: 1 })).status, 402);
+  const claim = await call('POST', '/api/claim', A, { purchaseId: 'dev_abc123', productId: 'lucky_charms_5' });
+  assert.equal(claim.charms, 5);
+  assert.equal((await call('POST', '/api/claim', A, { purchaseId: 'dev_abc123', productId: 'lucky_charms_5' })).charms, 5);
+  assert.equal((await call('POST', '/api/spend', A, { n: 1 })).charms, 4);
 
   // scores, leaderboard, block
   await call('POST', '/api/score', A, { score: 900, days: 40, loves: 2 });
