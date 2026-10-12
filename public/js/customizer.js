@@ -14,7 +14,7 @@
   const LOOK_TABS = [['face', 'Face'], ['hair', 'Hair'], ['head', 'Headwear'], ['outfit', 'Outfit'], ['colour', 'Colours'], ['about', 'About me']];
   const THUMBS = {};
 
-  LS.defaultBio = () => ({ job: 'fintech', area: 'yaba', vibes: ['jollof', 'afrobeats', 'funny'], love: 'time', flag: 'late', looking: 'all', age: 23 });
+  LS.defaultBio = () => ({ job: 'fintech', area: 'yaba', vibes: ['jollof', 'afrobeats', 'funny'], love: 'time', flag: 'late', looking: 'masc', age: 23 });
 
   /**
    * opts: { intro: bool } — intro = first launch (can't close without saving).
@@ -52,7 +52,7 @@
         const lab = id => (PM.get('archetypes', id) || {}).label || id;
         const arch = {}; for (const id of PM.NAIJA_HERITAGES || Object.keys(PM.NAIJA_MIX)) arch[id] = lab(id);
         const more = {}; for (const id of PM.OTHER_AFRICAN || []) more[id] = lab(id);
-        body.append(LS.ui.section('Presentation', h('div.segment', [['fem', 'Femme'], ['andro', 'Andro'], ['masc', 'Masc']].map(([k, l]) => h('button', { type: 'button', class: g.gender === k ? 'on' : '', onclick: () => { regen({ gender: k }); } }, l)))));
+        body.append(LS.ui.section('I am', h('div.segment', [['fem', 'A woman'], ['masc', 'A man']].map(([k, l]) => h('button', { type: 'button', class: LS.sexOf(g) === k ? 'on' : '', onclick: () => { regen({ gender: k }); drawTab(); } }, l)))));
         body.append(LS.ui.section('Heritage', chipRow(arch, g.archetype, k => regen({ archetype: k }))));
         body.append(LS.ui.section('More of Africa', chipRow(more, g.archetype, k => regen({ archetype: k }))));
         body.append(LS.ui.section('Face', ...SLIDERS.map(([k, label, a, b]) => h('label.slider', h('span', label), h('input', { type: 'range', min: a, max: b, step: 0.01, value: g[k] != null ? g[k] : 1, oninput: e => set(k, +e.target.value) })))));
@@ -111,8 +111,10 @@
     LS.sheet.open(opts.intro ? 'Your look' : 'Customise', h('div.cz', intro, prev, tabs, body, actions), { full: true, noClose: !!opts.intro });
 
     function save() {
-      const bio = work.bio; bio.looking = bio.looking || (G.look.bio && G.look.bio.looking) || 'all';
+      const bio = work.bio; work.genome.gender = LS.sexOf(work.genome); bio.looking = LS.opposite(work.genome);   // straight: you look for the other one
       G.look = { genome: work.genome, bio, locks: [...locks] };
+      LS.setPlayerGender(work.genome.gender); LS.social.buffer = [];
+      if (G.s) G.s.g = work.genome.gender;
       G.save(); G.refreshMe();
       LS.social.saveProfile(G.look, G.s ? LS.Engine.life(G.s) : null);
       LS.sheet.close();

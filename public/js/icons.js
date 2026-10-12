@@ -63,6 +63,22 @@
   };
   LS.ART = ART;
 
+
+  /** A tall scene for cards with no face (the narrator, places): sky, far skyline, the postcard picture on the ground. Thin ink, not a blown-up icon. */
+  LS.vignette = function (k) {
+    const a = ART[k] || ART.skyline;
+    let far = '', x = 0, i = 0;
+    const hs = [34, 52, 28, 64, 42, 30, 58, 36, 48, 26, 56, 40];
+    while (x < 300) { const w = 18 + (i * 7) % 16, hgt = hs[i % hs.length]; far += `<rect x="${x}" y="${236 - hgt}" width="${w}" height="${hgt + 20}"/>`; x += w + 2; i++; }
+    const clouds = '<g fill="#fffaf0" opacity=".75"><ellipse cx="70" cy="64" rx="34" ry="9"/><ellipse cx="96" cy="58" rx="22" ry="8"/><ellipse cx="226" cy="98" rx="30" ry="8"/></g>';
+    return `<svg class="vig" viewBox="0 0 300 340" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><defs><linearGradient id="v-${k}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${a.c[0]}"/><stop offset="1" stop-color="${a.c[1]}"/></linearGradient></defs>` +
+      `<rect width="300" height="340" fill="url(#v-${k})"/><circle cx="222" cy="68" r="26" fill="#fffaf0" opacity=".85"/>${clouds}` +
+      `<g fill="${I}" opacity=".16">${far}</g>` +
+      `<rect y="246" width="300" height="94" fill="#3b2f25" opacity=".28"/><path d="M0 250h300" stroke="${I}" stroke-width="2.5" fill="none"/>` +
+      `<path d="M0 300h300" stroke="#fffaf0" stroke-width="3" stroke-dasharray="26 18" opacity=".7" fill="none"/>` +
+      `<g transform="translate(66 108) scale(1.4)">${a.svg}</g></svg>`;
+  };
+
   // word → picture, tried in order against the option's label
   const GUESS = [
     [/mama put|buka|suya|jollof|cook|eat|lunch|food|buy two|dinner|plate|share a/, 'food'],

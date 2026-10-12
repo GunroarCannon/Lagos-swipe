@@ -38,3 +38,12 @@ public/js/         engine.js (rules, no DOM), cards.js (the deck: add cards here
 public/portrait-js the submodule
 ```
 Add a card: `LS.card(id, who, mood, text, [leftLabel, {wallet: -5}], [rightLabel, {heart: 8}], { dom, when, cd })` (see `cards.js`).
+
+## Stories
+
+Storylines live in `public/js/stories.js`: a hook card in the deck starts one, and its chapters chain with `push` (later, with
+`{ p, if }` so a choice can fan out) or `go` (straight away). `intro: { role, sub, g, years }` brings in a new character
+(`who: '@role'`), `story: [id, text, 'done'|'failed']` writes the log shown in People & stories, and `ending: 'japa'` ends the run.
+Included: The Startup, The Estate Committee, Adaeze's Wedding, The Japa Question.
+
+You play a woman or a man, and everyone you can date is the other one.

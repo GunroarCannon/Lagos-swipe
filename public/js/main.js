@@ -12,6 +12,7 @@
     ]);
     await LS.platform.init();
     await ready;
+    try { LS.splashStickers(); } catch (e) { console.error(e); }
     const saved = LS.Game.load();
     const meta = Object.assign({ charms: 1, runs: 0, best: 0, endings: {} }, saved && saved.meta);
     LS.look = saved && saved.look;

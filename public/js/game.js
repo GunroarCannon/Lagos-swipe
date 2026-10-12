@@ -22,7 +22,7 @@
     const bars = $('#bars'); bars.textContent = '';
     for (const k of LS.STAT_KEYS) {
       const el = h('div.bar', { 'data-stat': k, title: LS.STATS[k].blurb });
-      el.innerHTML = '<div class="badge"><i class="ring"></i><svg viewBox="0 0 48 48" class="face">' + ICONS[k] + '</svg><i class="dot"></i><b class="delta"></b></div><span class="lbl">' + LS.STATS[k].label + '</span>';
+      el.innerHTML = '<div class="badge"><i class="level"></i><svg viewBox="0 0 48 48" class="face">' + ICONS[k] + '</svg></div><i class="arrow"></i><b class="delta"></b><span class="lbl">' + LS.STATS[k].label + '</span>';
       bars.append(el);
     }
   };
@@ -31,7 +31,8 @@
     const s = G.s; if (!s) return;
     for (const k of LS.STAT_KEYS) {
       const el = $(`.bar[data-stat="${k}"]`);
-      el.style.setProperty('--v', clamp(s.stats[k], 0, 100).toFixed(1));
+      const v = clamp(s.stats[k], 0, 100).toFixed(1);
+      el.style.setProperty('--v', v); el.style.setProperty('--pv', v);
       el.classList.toggle('danger', E.isDanger(s, k));
     }
     $('#hud-age').textContent = `AGE ${s.age}`;
@@ -55,11 +56,16 @@
     }
   };
 
+  /** Show what an option would do: the level ghosts to where it would end up, with an arrow (bigger = more). */
   function previewDots(opt) {
     for (const k of LS.STAT_KEYS) {
-      const dot = $(`.bar[data-stat="${k}"] .dot`);
-      const v = opt ? Math.abs((opt.fx || {})[k] || 0) : 0;
-      dot.className = 'dot' + (v >= 11 ? ' big' : v >= 5 ? ' mid' : v > 0 ? ' small' : '');
+      const el = $(`.bar[data-stat="${k}"]`), arrow = $('.arrow', el);
+      const d = opt ? ((opt.fx || {})[k] || 0) * E.TUNE.fx : 0;
+      const cur = clamp(G.s ? G.s.stats[k] : 50, 0, 100), to = clamp(cur + d, 0, 100);
+      el.style.setProperty('--pv', to.toFixed(1));
+      el.classList.toggle('gain', d > 0.4); el.classList.toggle('loss', d < -0.4);
+      const m = Math.abs(d);
+      arrow.className = 'arrow' + (m < 0.4 ? '' : m >= 11 ? ' a3' : m >= 5 ? ' a2' : ' a1') + (d < 0 ? ' dn' : '');
     }
   }
 
@@ -76,6 +82,7 @@
     if (w.type === 'cast') return LS.castGenome(w.key);
     if (w.type === 'partner') return G.s.partner && Object.assign({}, G.s.partner.genome, LS.LOOK);
     if (w.type === 'profile') return w.profile.genome;
+    if (w.type === 'npc') return w.genome;
     return null;
   }
 
@@ -118,6 +125,7 @@
     if (placeArt && LS.ART[placeArt]) pic.style.setProperty('--wash', `linear-gradient(${LS.ART[placeArt].c[0]}, ${LS.ART[placeArt].c[1]})`);
     const frame = h('div.portrait');
     pic.append(frame, h('div.skyline', { html: SKYLINE }));
+    if (card.story) pic.append(h('span.story-tab', h('i'), card.story.title, card.story.ch ? ' · ' + card.story.ch : ''));
     el.append(head, pic);
 
     if (g) {
@@ -125,12 +133,12 @@
       G.handle = LS.portrait.live(frame, g, { width: 300, mood: card.kind === 'meet' && card.temptation ? 'flirty' : mood });
       if (card.profile && card.profile.avatar) pic.append(h('img.avatar-chip', { src: card.profile.avatar, alt: '' }));
     } else {
-      frame.innerHTML = placeArt ? LS.artSVG(placeArt) : LS.artSVG('skyline');
+      frame.innerHTML = LS.vignette(placeArt || 'skyline');
       frame.classList.add('art');
     }
 
     if (card.kind === 'ending') {
-      el.append(h('div.stamp-big', { class: 'stamp-big ' + (card.lose ? 'bad' : 'good') }, card.lose ? 'GAME OVER' : 'YOU MADE IT'));
+      el.append(h('div.stamp-big', { class: 'stamp-big ' + (card.lose ? 'bad' : 'good') }, card.stamp || (card.lose ? 'GAME OVER' : 'YOU MADE IT')));
       el.append(h('h2.end-title', card.title), h('p.line', card.text), summaryRows(s));
       const rb = rememberedBy(s);
       if (rb.length) el.append(h('div.remembered', h('b', 'People remember'), rb.map(r => h('p', h('i', r.name + ': '), r.t))));
@@ -148,8 +156,9 @@
     if (card.kind === 'ending') $('#toast').classList.remove('show');
     setPostcards(card);
     previewDots(null);
-    G.busy = false;
+    G.busy = true;
     deal(el);
+    clearTimeout(G._dealT); G._dealT = setTimeout(() => { if (G.card === card) G.busy = false; }, 280);
 
     // they speak the first sentence, if sound is on
     if (G.handle && card.kind !== 'ending') {
@@ -171,11 +180,11 @@
   }
 
   // ------------------------------------------------------------------ swipe physics
-  const P = { x: 0, y: 0, vx: 0, on: false, id: null, sx: 0, sy: 0, samples: [], side: null, raf: 0, w: 320 };
+  const P = { x: 0, y: 0, vx: 0, on: false, id: null, sx: 0, sy: 0, tx: 0, ty: 0, samples: [], side: null, raf: 0, w: 320 };
   const stackEl = () => $('#stack');
 
   function resetCard(el) {
-    cancelAnimationFrame(P.raf); P.x = P.y = P.vx = 0; P.side = null;
+    cancelAnimationFrame(P.raf); P.x = P.y = P.vx = P.tx = P.ty = 0; P.side = null;
     el.style.transform = ''; el.style.opacity = ''; el.classList.remove('dragging', 'deal');
     stackEl().style.setProperty('--p', 0); stackEl().style.setProperty('--pa', 0);
   }
@@ -188,10 +197,10 @@
   function paint(x, y) {
     const el = $('#card'), W = P.w;
     P.x = x; P.y = y;
-    const rot = clamp(x / W * 17, -20, 20);
+    const rot = clamp(x / W * 19, -22, 22);
     const lift = -Math.min(Math.abs(x) * 0.07, 16) + y * 0.35;
     el.style.transform = `translate3d(${x.toFixed(1)}px, ${lift.toFixed(1)}px, 0) rotate(${rot.toFixed(2)}deg)`;
-    const p = clamp(x / (W * 0.3), -1, 1);
+    const p = clamp(x / (W * 0.2), -1, 1);
     stackEl().style.setProperty('--p', p.toFixed(3)); stackEl().style.setProperty('--pa', Math.abs(p).toFixed(3));
     const side = p > 0.4 ? 'R' : p < -0.4 ? 'L' : null;
     if (side !== P.side) {
@@ -221,9 +230,9 @@
     return new Promise(resolve => {
       cancelAnimationFrame(P.raf);
       const dir = side === 'R' ? 1 : -1, x0 = P.x, y0 = P.y, target = dir * (P.w * 1.25 + 90);
-      const dur = clamp(250 - Math.abs(v0) * 0.06, 150, 250), t0 = performance.now();
+      const dur = clamp(330 - Math.abs(v0) * 0.05, 210, 330), t0 = performance.now();
       const step = now => {
-        const t = clamp((now - t0) / dur, 0, 1), e = 1 - Math.pow(1 - t, 2.2);
+        const t = clamp((now - t0) / dur, 0, 1), e = t * t * (3 - 2 * t) * 0.6 + (1 - Math.pow(1 - t, 2)) * 0.4;
         paint(x0 + (target - x0) * e, y0 + 30 * e);
         $('#card').style.opacity = String(1 - Math.max(0, t - 0.6) * 2.4);
         if (t < 1) P.raf = requestAnimationFrame(step); else resolve();
@@ -232,31 +241,52 @@
     });
   }
 
+  /** Finger distance → card distance. The card starts stiff, gives a little, then gets harder to push (rubber). */
+  const resist = (dx, W) => {
+    const a = Math.abs(dx), knee = W * 0.26, sign = dx < 0 ? -1 : 1;
+    const out = a < 14 ? a * 0.2 : 2.8 + (a - 14) * 0.5;
+    return sign * (out > knee ? knee + (out - knee) * 0.35 : out);
+  };
+
+  /** While held, the card trails the finger with a bit of mass instead of being glued to it. */
+  function follow() {
+    let last = performance.now();
+    const step = now => {
+      if (!P.on) return;
+      const dt = Math.min(0.04, (now - last) / 1000); last = now;
+      const k = 1 - Math.exp(-dt * 24);
+      paint(P.x + (P.tx - P.x) * k, P.y + (P.ty - P.y) * k);
+      P.raf = requestAnimationFrame(step);
+    };
+    P.raf = requestAnimationFrame(step);
+  }
+
   G.bindSwipe = function () {
     const el = $('#card');
     el.addEventListener('pointerdown', e => {
       if (G.busy || !G.card || e.button > 0 || P.on) return;
       cancelAnimationFrame(P.raf);
-      P.on = true; P.id = e.pointerId; P.sx = e.clientX - P.x; P.sy = e.clientY - P.y; P.samples = [[performance.now(), P.x]]; P.w = el.offsetWidth || 320;
+      P.on = true; P.id = e.pointerId; P.sx = e.clientX; P.sy = e.clientY; P.samples = [[performance.now(), 0]]; P.w = el.offsetWidth || 320;
+      P.tx = P.x; P.ty = P.y; P.base = P.x;
       el.setPointerCapture(e.pointerId); el.classList.add('dragging'); el.classList.remove('deal');
       LS.sound.play('click', { vol: 0.2, rate: 1.3 });
+      follow();
     });
     el.addEventListener('pointermove', e => {
       if (!P.on || e.pointerId !== P.id) return;
-      const x = e.clientX - P.sx, y = clamp(e.clientY - P.sy, -60, 60);
-      const now = performance.now();
-      P.samples.push([now, x]); while (P.samples.length > 2 && now - P.samples[0][0] > 90) P.samples.shift();
-      paint(x, y);
+      const dx = e.clientX - P.sx, now = performance.now();
+      P.tx = P.base + resist(dx, P.w); P.ty = clamp((e.clientY - P.sy) * 0.3, -26, 26);
+      P.samples.push([now, dx]); while (P.samples.length > 2 && now - P.samples[0][0] > 110) P.samples.shift();
     });
     const end = e => {
       if (!P.on || e.pointerId !== P.id) return;
       P.on = false; el.classList.remove('dragging');
       const a = P.samples[0], b = P.samples[P.samples.length - 1];
       const v = b[0] > a[0] ? (b[1] - a[1]) / ((b[0] - a[0]) / 1000) : 0;   // px/s
-      const thr = P.w * 0.3;
-      if (P.x > thr || (v > 700 && P.x > 14)) G.choose('R', { v });
-      else if (P.x < -thr || (v < -700 && P.x < -14)) G.choose('L', { v });
-      else springBack(v);
+      const thr = P.w * 0.2;   // on the resisted distance; this is a real, deliberate pull
+      if (P.x > thr || (v > 1000 && P.x > 18)) G.choose('R', { v });
+      else if (P.x < -thr || (v < -1000 && P.x < -18)) G.choose('L', { v });
+      else springBack(0);
     };
     el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
 
@@ -311,8 +341,8 @@
 
   G.next = function () {
     const s = G.s;
-    if (LS.social.buffer.length < 3) LS.social.fillBuffer(G.look && G.look.bio && G.look.bio.looking);
-    const card = E.draw(s, { realBuffer: LS.social.buffer, show: G.look && G.look.bio && G.look.bio.looking });
+    if (LS.social.buffer.length < 3) LS.social.fillBuffer(LS.opposite(s.g));
+    const card = E.draw(s, { realBuffer: LS.social.buffer });
     G.showCard(card);
     G.updateHud();
   };
@@ -346,7 +376,7 @@
 
   G.restart = function () {
     G.finish();
-    G.s = E.newRun(LS.platform.player.name);
+    G.s = E.newRun(LS.platform.player.name, LS.sexOf(G.look && G.look.genome));
     G.save();
     G.busy = false;
     G.next();
@@ -375,9 +405,20 @@
     if (LS.platform.player.avatar) { av.src = LS.platform.player.avatar; av.hidden = false; } else av.hidden = true;
   };
 
+  /** Only woman and man: an older look with another value becomes a woman; who you look for is the other one. */
+  G.fixLook = function () {
+    const look = G.look; if (!look || !look.genome) return;
+    look.genome.gender = LS.sexOf(look.genome);
+    look.bio = Object.assign({}, look.bio, { looking: LS.opposite(look.genome) });
+    LS.setPlayerGender(look.genome.gender);
+    if (G.s) G.s.g = look.genome.gender;
+  };
+
   G.init = function (look, run, meta) {
     G.look = look; G.meta = meta;
-    G.s = run && (!run.over || !run.recorded) ? E.fix(run) : E.newRun(LS.platform.player.name);
+    G.fixLook();
+    G.s = run && (!run.over || !run.recorded) ? E.fix(run) : E.newRun(LS.platform.player.name, LS.sexOf(look.genome));
+    G.s.g = LS.sexOf(look.genome);
     G.buildHud(); G.bindSwipe(); G.refreshMe(); G.updateHud();
     G.next();
   };

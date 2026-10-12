@@ -12,11 +12,15 @@
   const hash = s => (window.PM && PM.hashString ? PM.hashString(String(s)) : String(s).split('').reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 7) >>> 0);
   LS.hash = hash;
 
+  /** Two presentations only: everything in the game is 'fem' or 'masc'. */
+  LS.sexOf = g => (g && (g.gender || g) === 'masc' ? 'masc' : 'fem');
+  LS.opposite = g => (LS.sexOf(g) === 'masc' ? 'fem' : 'masc');
+
   /** Build a full genome. o: { seed, archetype, gender, years, role, over: {…genome fields} } */
   LS.makeGenome = function (o) {
     const base = { role: o.role || 'everyday', age: LS.ageKnob(o.years || 25) };
     const locked = new Set(['age', 'role']);
-    const g = PM.generate({ seed: o.seed, archetype: o.archetype || 'lagosian', gender: o.gender || 'fem', base, locked });
+    const g = PM.generate({ seed: o.seed, archetype: o.archetype || 'lagosian', gender: LS.sexOf(o.gender), base, locked });
     // generate() may re-roll these when role dressing runs; apply our look and overrides last
     Object.assign(g, LS.LOOK, o.over || {});
     return g;
@@ -48,10 +52,29 @@
   };
   LS.CAST = CAST;
   const castCache = {};
+  // your ex is always someone you could have dated
+  const EX = {
+    masc: { name: 'Dayo', who: 'Your ex', arch: 'yoruba', g: 'masc', years: 28, seed: 1110, over: { hairStyle: 'waves', clothing: 'kaftan', headwear: 'none' } },
+    fem: { name: 'Funmi', who: 'Your ex', arch: 'yoruba', g: 'fem', years: 27, seed: 1210, over: { hairStyle: 'knotless-braids', clothing: 'buba', headwear: 'none' } },
+  };
+  /** Call when the player's gender is known or changes: swaps in the ex who fits. */
+  LS.setPlayerGender = g => { CAST.ex = EX[LS.opposite(g)]; delete castCache.ex; };
+  LS.setPlayerGender('fem');
   LS.castGenome = id => {
     const c = CAST[id];
     if (!c) return null;
     return castCache[id] || (castCache[id] = LS.makeGenome({ seed: c.seed, archetype: c.arch, gender: c.g, years: c.years, role: c.role, over: c.over }));
+  };
+
+  /** A new person a story brings in. spec: { g, years: n | [a, b], dress: portrait-js role, title: 'Mrs.' }. */
+  LS.makeNpc = function (seed, spec = {}) {
+    const r = LS.rng('npc:' + seed);
+    const arch = spec.arch || r.weighted(PM.NAIJA_MIX || { lagosian: 1 });
+    const gender = spec.g === 'masc' || spec.g === 'fem' ? spec.g : r.pick(['fem', 'masc']);
+    const years = Array.isArray(spec.years) ? r.int(spec.years[0], spec.years[1]) : spec.years || r.int(26, 52);
+    const genome = LS.makeGenome({ seed: hash('npc' + seed) % 1e9, archetype: arch, gender, years, role: spec.dress || 'everyday', over: spec.over });
+    const first = LS.names(arch, gender, r);
+    return { name: spec.title ? spec.title + ' ' + first : first, genome, gender, arch, age: years };
   };
 
   // ------------------------------------------------------------------ generated profile cards
@@ -65,7 +88,7 @@
   LS.makeProfile = function (seed, opts = {}) {
     const r = LS.rng('prof:' + seed);
     const arch = r.weighted(PM.NAIJA_MIX || { lagosian: 1 });
-    const gender = opts.show === 'fem' || opts.show === 'masc' ? opts.show : r.pick(['fem', 'masc']);
+    const gender = opts.show === 'fem' || opts.show === 'masc' ? opts.show : r.pick(['fem', 'masc']);   // callers pass the opposite of the player
     const years = r.int(21, 39);
     const jobKey = r.pick(Object.keys(LS.PROFILE_JOBS));
     const job = LS.PROFILE_JOBS[jobKey];

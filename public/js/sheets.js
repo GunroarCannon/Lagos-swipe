@@ -64,7 +64,7 @@
     const legacy = h('div.legacy', h('div', 'Runs ', h('b', meta.runs || 0)), h('div', 'Best ', h('b', meta.best || 0)), h('div', 'Endings ', h('b', `${found}/${Object.keys(LS.ENDINGS).length}`)));
     const actions = h('div.actions',
       h('button.btn.primary', { type: 'button', onclick: () => LS.customize({ intro: false }) }, 'Customise your look'),
-      h('button.btn', { type: 'button', onclick: () => LS.showPeople() }, 'People & memories'),
+      h('button.btn', { type: 'button', onclick: () => LS.showPeople() }, 'People & stories'),
       h('button.btn', { type: 'button', onclick: () => LS.showBoard() }, 'Leaderboard'));
     Sheet.open('Your life', h('div', hero, rows, section('How you’re doing', bars), legacy, actions));
   };
@@ -142,7 +142,7 @@
       section('Sound', sound),
       section('Lucky charms', h('p.muted', `A lucky charm pulls you back once when a bar hits the edge. You have ${G.charmCount()}.`),
         h('button.btn.primary', { type: 'button', onclick: buy }, 'Get 5 for ₦100')),
-      section('Play', h('div.actions', h('button.btn', { type: 'button', onclick: () => LS.showPeople() }, 'People & memories'), h('button.btn', { type: 'button', onclick: () => LS.showBoard() }, 'Leaderboard'),
+      section('Play', h('div.actions', h('button.btn', { type: 'button', onclick: () => LS.showPeople() }, 'People & stories'), h('button.btn', { type: 'button', onclick: () => LS.showBoard() }, 'Leaderboard'),
         h('button.btn', { type: 'button', onclick: () => { if (confirm('Start a new life? This one ends here.')) { Sheet.close(); G.restart(); } } }, 'New life'))),
       section('About', h('p.muted', 'Lagos Swipe is a life sim. Decide with a swipe or a tap on a postcard. Keep Wallet, Heart, Hustle and Peace off the ends, look after the people who matter, and reach 35.'),
         h('p.muted', online ? 'Online: other real players can turn up in your day.' : 'Offline: playing with the Lagos crowd only.'),
@@ -190,11 +190,21 @@
       const name = cast ? cast.name : p.name;
       if (!name) continue;
       const genome = cast ? LS.castGenome(key) : p.genome && Object.assign({}, p.genome, LS.LOOK);
-      const sub = cast ? cast.who : p.job ? LS.jobLabel(p.job) : 'Someone you met';
+      const sub = cast ? cast.who : p.sub || (p.job ? LS.jobLabel(p.job) : 'Someone you met');
       rows.push({ key, name, sub, genome, rel: p.rel, mems, partner: !!(s.partner && s.partner.id === key) });
     }
     rows.sort((a, b) => (b.partner - a.partner) || (b.mems.length - a.mems.length) || Math.abs(b.rel - 50) - Math.abs(a.rel - 50));
     const body = h('div.people');
+    const stories = E.stories(s);
+    if (stories.length) {
+      body.append(h('h3.sec', 'Stories'));
+      for (const st of stories) {
+        const def = LS.STORIES[st.id] || { title: st.id };
+        body.append(h('div.story-row', h('h4', def.title, h('span', { class: 'st ' + st.state }, st.state === 'open' ? 'Ongoing' : st.state === 'done' ? 'Done' : 'Ended')),
+          h('ol', st.log.slice(-4).map(l => h('li', l.t)))));
+      }
+      body.append(h('h3.sec', 'People'));
+    }
     if (!rows.length) body.append(h('p.muted', 'Nobody knows you yet. What you do around people is remembered.'));
     for (const r of rows) {
       const item = h('div.person',
@@ -206,6 +216,6 @@
           r.mems.slice(0, 3).map(m => h('p.mem', '“' + m.t + '”'))));
       body.append(item);
     }
-    if (LS.sheet.isOpen) LS.sheet.push('People & memories', body); else LS.sheet.open('People & memories', body);
+    if (LS.sheet.isOpen) LS.sheet.push('People & stories', body); else LS.sheet.open('People & stories', body);
   };
 })(window.LS = window.LS || {});

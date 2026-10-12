@@ -15,6 +15,12 @@
  *            }
  *   options  { dom, w (weight), cd (cooldown in months), once, when: s => bool }
  *
+ *   Stories (see stories.js): a card option may start or advance a storyline and bring new people in:
+ *              story: ['id', 'what just happened', 'done'|'failed']   add a line to the story log (and close it)
+ *              intro: { role, sub, g: 'any'|'same'|'opp'|'fem'|'masc', years, dress, title }   a new character; cards say who: '@role'
+ *              push: [{ id, after, p: 0.6, if: s => bool }] or s => [...]   one choice can fan out into several later events
+ *              go: s => 'cardId'      branch a scene on state;   ending: 'japa'   end the run on purpose
+ *
  *   Scenes (extended conversations): LS.scene('interview', 'bukola', 'neutral', { a: {text, L, R}, … }) – steps jump
  *   to each other with extras.go. Scene steps only come up when something goes to them.
  *
@@ -23,6 +29,8 @@
 (function (LS) {
   'use strict';
   LS.CARDS = [];
+  /** Storylines: LS.STORIES[id] = { title, blurb }. Cards carry `story: id` and a ribbon on the card shows where you are. */
+  LS.STORIES = {};
   const opt = o => ({ t: o[0], fx: o[1] || {}, ex: o[2] || {} });
   const C = LS.card = (id, who, mood, text, L, R, o = {}) => { LS.CARDS.push(Object.assign({ id, who, mood, text, L: opt(L), R: opt(R), w: 1, cd: 8 }, o)); };
   const has = (s, f) => !!s.flags[f];
@@ -55,7 +63,7 @@
     ['I can’t', { peace: -7, heart: -3 }, { rel: -7, mem: ['refused', 'You said no when family needed money.'] }], ['Send it', { wallet: -12, peace: 6, heart: 3 }, { rel: 8, mem: ['helped', 'You sent money home when it mattered.'] }], { dom: 'family', when: s => s.stats.wallet > 25 });
   C('mama_church', 'mama', 'determined', '“Service is at nine. Wear the blue one. And greet Pastor properly.”',
     ['Sleep in', { peace: -6, hustle: -1, heart: -2 }], ['Show up', { peace: 7, heart: 3, hustle: 2 }], { dom: 'family', w: 0.8 });
-  C('sis_fees', 'sister', 'sad', '“Bro/sis, my school fees are due. Please.”',
+  C('sis_fees', 'sister', 'sad', '“{bro}, my school fees are due. Please.”',
     ['Not now', { heart: -6, peace: -4 }, { rel: -8, who: 'mama', mem: ['refusedSis', 'You told your little sister no.'] }], ['Pay it', { wallet: -14, heart: 7, peace: 5 }, { rel: 8, who: 'mama', mem: ['helped', 'You paid your sister’s fees.'] }], { dom: 'family', cd: 12 });
   C('family_group', 'mama', 'surprised', 'The family WhatsApp group has 214 unread messages. Someone’s cousin is getting married.',
     ['Mute it', { peace: 4, heart: -3 }], ['Read them all', { peace: -5, heart: 4 }], { dom: 'family', w: 0.9 });
@@ -135,7 +143,7 @@
   // ===================================================================== FRIENDS & SOCIAL
   C('party', 'dj', 'laughing', '“Detty party tonight! Entry is free if you come with energy.”',
     ['Stay home', { peace: 5, heart: -3 }], ['Pull up', { heart: 8, wallet: -6, peace: -5, hustle: 3 }, { friends: 1 }], { dom: 'social', w: 1.2 });
-  C('tobi_borrow', 'tobi', 'embarrassed', '“Bro, can you borrow me ₦20k? I’ll sort you Friday. Swear.”',
+  C('tobi_borrow', 'tobi', 'embarrassed', '“{bro}, can you borrow me ₦20k? I’ll sort you Friday. Swear.”',
     ['Sorry', { heart: -6, peace: 2 }, { rel: -6, mem: ['refused', 'You wouldn’t lend him money.'] }], ['Lend it', { wallet: -8, heart: 6 }, { r: 'Friday came and went.', rel: 4, mem: ['lent', 'You lent him ₦20k.'], push: [{ id: 'tobi_repay', after: 4 }] }], { dom: 'social', when: s => s.stats.wallet > 20, cd: 10 });
   C('wedding_invite', 'adaeze', 'happy', '“I’m getting married! You must come. Aso-ebi is ₦25,000.”',
     ['Send a gift only', { wallet: -3, heart: -3 }], ['Buy the aso-ebi', { wallet: -10, heart: 8, hustle: 3 }, { friends: 1 }], { dom: 'social', cd: 12 });
@@ -167,7 +175,7 @@
   // ===================================================================== CITY LIFE
   C('traffic', 'conductor', 'laughing', '“Third Mainland is stuck! Na two hours o. Which road you wan take?”',
     ['Wait it out', { peace: -5, hustle: -3 }], ['Take the okada', { wallet: -3, peace: -4, hustle: 3 }, { r: 'You arrive alive. Barely.' }], { dom: 'city', w: 1.2 });
-  C('danfo_fight', 'conductor', 'angry', '“Madam/Sir, change! Your ₦200 note is tearing. Add another ₦50.”',
+  C('danfo_fight', 'conductor', 'angry', '“{sir}, change! Your ₦200 note is tearing. Add another ₦50.”',
     ['Argue', { peace: -4, hustle: -2 }], ['Pay and move on', { wallet: -1, peace: 2 }], { dom: 'city' });
   C('checkpoint', 'officer', 'smug', '“Your particulars? You look like somebody that can ‘settle’.”',
     ['Insist on the law', { peace: -6, hustle: 3 }, { r: 'It takes forty minutes. You win. Technically.' }], ['Settle him', { wallet: -4, peace: 2 }], { dom: 'city' });
@@ -185,7 +193,7 @@
   // ===================================================================== FAITH & COMMUNITY
   C('pastor', 'pastor', 'happy', '“A word for you today: the Lord says your season is coming. Also, building fund.”',
     ['Nod politely', { peace: 4 }], ['Give ₦5k', { wallet: -5, peace: 7, heart: 3 }], { dom: 'faith', w: 0.8 });
-  C('aunty_match', 'aunty', 'flirty', '“I have the perfect person for you. Her family is very respectable.”',
+  C('aunty_match', 'aunty', 'flirty', '“I have the perfect person for you. Their family is very respectable.”',
     ['No thanks, Aunty', { peace: -2, heart: -1 }], ['Meet them', { heart: 4, peace: -4 }, { push: [{ id: 'aunty_date', after: 1 }] }], { dom: 'faith', when: s => !s.partner, cd: 14 });
   C('aunty_date', 'aunty', 'embarrassed', 'The “perfect person” has a lot of opinions about your career. Also, your hairline.',
     ['Escape through the window', { peace: 4, heart: -3 }], ['Be polite', { peace: -4, heart: 3, hustle: 2 }], { dom: 'faith', w: 0, when: () => false });
@@ -233,7 +241,7 @@
   C('landlord_evict', 'landlord', 'rage', '“Seven days. I’m done with excuses. Pack your things or I change the lock.”',
     ['Move back to Mama’s', { peace: -9, wallet: 3, hustle: -4 }, { home: -1, r: 'Back to the box room and the commentary.' }], ['Plead for a month', { wallet: -20, peace: -10 }, { rel: 6 }],
     { dom: 'home', w: 2, cd: 20, when: s => s.home >= 1 && relOf(s, 'landlord') < 15 });
-  C('tobi_repay', 'tobi', 'laughing', s => (relOf(s, 'tobi') >= 45 ? '“Bro! Look at me. I sorted your ₦20k, plus a little extra for the wait. Thank you for believing in me.”' : '“About that ₦20k… Bro, I’m still looking. Please don’t be angry.”'),
+  C('tobi_repay', 'tobi', 'laughing', s => (relOf(s, 'tobi') >= 45 ? '“{bro}! Look at me. I sorted your ₦20k, plus a little extra for the wait. Thank you for believing in me.”' : '“About that ₦20k… Bro, I’m still looking. Please don’t be angry.”'),
     ['Tell him to keep it', { heart: 8, peace: 2 }, { rel: 8, forget: 'lent' }], ['Collect it', { wallet: 8, heart: 2 }, { rel: 2, forget: 'lent' }],
     { dom: 'social', w: 0, when: () => false });
   C('boss_notice', 'boss', 'determined', '“Your name keeps coming up for leaving early. I’m not saying anything. But I’m noticing.”',
@@ -287,7 +295,7 @@
   });
 
   // ---- a family meeting about Uncle Segun
-  C('uncle_hospital', 'sister', 'scared', '“Bro/Sis, Uncle Segun is in hospital. They want a deposit. Mama said I should call you.”',
+  C('uncle_hospital', 'sister', 'scared', '“{bro}, Uncle Segun is in hospital. They want a deposit. Mama said I should call you.”',
     ['Say you’ll think about it', { peace: -4 }, { go: 'fm/1', rel: -3 }], ['Go to the hospital', { peace: -2, wallet: -3 }, { go: 'fm/1', r: 'The corridor smells of antiseptic and jollof.' }],
     { dom: 'family', once: true, w: 0.9, cd: 40, when: s => s.month > 10 });
   LS.scene('fm', 'mama', 'sad', {

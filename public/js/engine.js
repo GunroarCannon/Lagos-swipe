@@ -11,9 +11,9 @@
   const T = E.TUNE = { fx: 1.15, rent: 1.0, edge: 0.45, edgeAt: 76 };
 
   // ------------------------------------------------------------------ state
-  E.newRun = function (name) {
+  E.newRun = function (name, gender) {
     const s = {
-      v: 2, name: name || 'You', month: 0, age: START_AGE,
+      v: 3, name: name || 'You', g: gender === 'masc' ? 'masc' : 'fem', month: 0, age: START_AGE, cast: {}, stories: {},
       stats: { wallet: 50, heart: 48, hustle: 40, peace: 55 },
       job: 1, home: 0, friends: 2, status: 'single', partner: null,
       flags: {}, queue: [], cd: {}, seen: {}, lastDoms: [], matches: [], people: {}, loves: 0, cards: 0, mid: 0, counter: 0, revived: 0,
@@ -24,7 +24,8 @@
   };
   /** Bring an older save up to the current shape. */
   E.fix = function (s) {
-    s.people = s.people || {}; s.matches = s.matches || []; s.revived = s.revived || 0; s.v = 2;
+    s.people = s.people || {}; s.matches = s.matches || []; s.revived = s.revived || 0; s.cast = s.cast || {}; s.stories = s.stories || {};
+    s.g = s.g === 'masc' ? 'masc' : 'fem'; s.v = 3;
     return s;
   };
 
@@ -40,12 +41,28 @@
 
   // ------------------------------------------------------------------ helpers
   const byId = id => LS.CARDS.find(c => c.id === id);
-  const vars = s => ({ name: s.name, partner: s.partner ? s.partner.name : 'them' });
-  const pkeyOf = (s, k) => (k === 'PARTNER' ? (s.partner && s.partner.id) : k) || null;
+  /** Text variables: {name}, {partner}, {bro} (Bro/Sis), {sir} (Sir/Madam), and the name of everyone a story introduced ({investor}…). */
+  const vars = s => {
+    const v = { name: s.name, partner: s.partner ? s.partner.name : 'them', bro: s.g === 'masc' ? 'Bro' : 'Sis', sir: s.g === 'masc' ? 'Sir' : 'Madam', maid: s.g === 'masc' ? 'groomsman' : 'bridesmaid' };
+    for (const [role, c] of Object.entries(s.cast || {})) v[role] = c.name;
+    return v;
+  };
+  const isRole = k => typeof k === 'string' && k[0] === '@';
+  const pkeyOf = (s, k) => {
+    if (k === 'PARTNER') return (s.partner && s.partner.id) || null;
+    if (isRole(k)) return (s.cast[k.slice(1)] && s.cast[k.slice(1)].id) || null;
+    return k || null;
+  };
+  /** The person a card shows. '@role' = someone a story introduced. */
+  const castOf = (s, k) => s.cast && s.cast[k.slice(1)];
 
   function who(s, key) {
     if (!key) return { type: 'narrator', name: 'Lagos', sub: 'The city' };
-    if (key === 'PARTNER') return s.partner ? { type: 'partner', name: s.partner.name, sub: 'Your ' + (s.status === 'married' ? 'spouse' : s.status === 'engaged' ? 'fiancé(e)' : 'partner'), id: s.partner.id } : { type: 'narrator', name: 'Lagos', sub: '' };
+    if (key === 'PARTNER') return s.partner ? { type: 'partner', name: s.partner.name, sub: 'Your ' + (s.status === 'married' ? 'spouse' : s.status === 'engaged' ? (s.partner.genome && s.partner.genome.gender === 'masc' ? 'fiancé' : 'fiancée') : 'partner'), id: s.partner.id } : { type: 'narrator', name: 'Lagos', sub: '' };
+    if (isRole(key)) {
+      const c = castOf(s, key);
+      return c ? { type: 'npc', key: c.id, name: c.name, sub: c.sub, genome: c.genome } : { type: 'narrator', name: 'Lagos', sub: 'The city' };
+    }
     const c = LS.CAST && LS.CAST[key];
     return { type: 'cast', key, name: c ? c.name : key, sub: c ? c.who : '' };
   }
@@ -54,8 +71,10 @@
     const f = t => LS.fill(t, vars(s));
     const side = o => ({ t: f(o.t), fx: o.fx, ex: o.ex, ic: o.ex && o.ex.ic });
     const txt = typeof c.text === 'function' ? c.text(s) : c.text;
+    const st = c.story && s.stories[c.story];
     return { id: c.id, kind: c.scene ? 'scene' : 'event', dom: c.dom, who: who(s, c.who), pkey: pkeyOf(s, c.who), mood: c.mood || 'neutral', text: f(txt), L: side(c.L), R: side(c.R),
-      time: c.time != null ? c.time : 1, def: c, place: c.place || null };
+      time: c.time != null ? c.time : 1, def: c, place: c.place || null,
+      story: c.story ? { id: c.story, title: (LS.STORIES[c.story] || {}).title || c.story, ch: st ? st.log.length : 0 } : null };
   }
 
   const eligible = (s, c) => {
@@ -64,6 +83,7 @@
     if (c.cd && s.cd[c.id] != null && s.month - s.cd[c.id] < c.cd) return 0;
     if (c.when && !c.when(s)) return 0;
     if (c.who === 'PARTNER' && !s.partner) return 0;
+    if (isRole(c.who) && !castOf(s, c.who)) return 0;
     let w = c.w;
     if (s.lastDoms[s.lastDoms.length - 1] === c.dom) w *= 0.45;
     if (s.lastDoms.length > 1 && s.lastDoms[s.lastDoms.length - 2] === c.dom) w *= 0.7;
@@ -114,7 +134,7 @@
 
   function meetCard(s, opts) {
     s.counter++;
-    const p = LS.makeProfile((LS.hash(s.name) % 9973) * 100000 + s.counter * 7 + s.mid, { show: opts.show || 'all' });
+    const p = LS.makeProfile((LS.hash(s.name) % 9973) * 100000 + s.counter * 7 + s.mid, { show: s.g === 'masc' ? 'fem' : 'masc' });
     const m = LS.pick(MEETS);
     const taken = !!s.partner;
     const text = taken ? `${p.name} (${LS.jobLabel(p.job)}) keeps finding reasons to talk to you. You’re with ${s.partner.name}.` : m.text(p);
@@ -144,6 +164,15 @@
     return out;
   }
 
+  /** Change how someone feels about you and what they remember. o: { rel, mem: [tag, text], forget: tag } */
+  function touch(s, pk, o) {
+    if (!pk || !(o.rel || o.mem || o.forget)) return;
+    const p = E.person(s, pk);
+    if (o.rel) p.rel = clamp(p.rel + o.rel, 0, 100);
+    if (o.mem) p.mem[o.mem[0]] = { m: s.month, t: LS.fill(o.mem[1], vars(s)) };
+    if (o.forget) delete p.mem[o.forget];
+  }
+
   function applyEx(s, ex, pkey) {
     if (ex.job) s.job = clamp(s.job + ex.job, 0, LS.JOBS.length - 1);
     if (ex.home) s.home = clamp(s.home + ex.home, 0, LS.HOMES.length - 1);
@@ -157,16 +186,47 @@
       if (ex.status === 'married') { s.flags.married = true; s.loves++; }
     }
     // people remember
-    const pk = ex.who ? pkeyOf(s, ex.who) : pkey;
-    if (pk && (ex.rel || ex.mem || ex.forget)) {
-      const p = E.person(s, pk);
-      if (ex.rel) p.rel = clamp(p.rel + ex.rel, 0, 100);
-      if (ex.mem) p.mem[ex.mem[0]] = { m: s.month, t: ex.mem[1] };
-      if (ex.forget) delete p.mem[ex.forget];
+    touch(s, ex.who ? pkeyOf(s, ex.who) : pkey, ex);
+    for (const a of [].concat(ex.also || [])) touch(s, pkeyOf(s, a.who), a);   // a second person who is affected too
+    if (ex.intro) for (const spec of [].concat(ex.intro)) E.introduce(s, spec);
+    if (ex.story) storyNote(s, ex.story);
+    // follow-ups: a list, or a function of the state. Each may carry { p: chance, if: s => bool } so one choice can fan out
+    const pushes = typeof ex.push === 'function' ? ex.push(s) : ex.push;
+    for (const p of pushes || []) {
+      if (p.if && !p.if(s)) continue;
+      if (p.p != null && Math.random() > p.p) continue;
+      s.queue.push({ id: p.id, at: s.month + (p.after != null ? p.after : 1) });
     }
-    for (const p of ex.push || []) s.queue.push({ id: p.id, at: s.month + (p.after || 1) });
-    if (ex.go) s.queue.unshift({ id: ex.go, at: s.month });   // the next step of a scene: right now
+    const go = typeof ex.go === 'function' ? ex.go(s) : ex.go;
+    if (go) s.queue.unshift({ id: go, at: s.month });   // the next step of a scene: right now
+    if (ex.ending) s.forceEnd = ex.ending;
   }
+
+  // ------------------------------------------------------------------ stories & new characters
+  /** Bring a new person into your life with a role: spec { role, sub, g: 'any'|'same'|'opp'|'fem'|'masc', years, dress, title, rel, mem }. Once per role. */
+  E.introduce = function (s, spec) {
+    if (s.cast[spec.role]) return s.cast[spec.role];
+    s.counter++;
+    const g = spec.g === 'fem' || spec.g === 'masc' ? spec.g : spec.g === 'same' ? s.g : spec.g === 'opp' ? (s.g === 'masc' ? 'fem' : 'masc') : null;
+    const seed = (LS.hash(s.name + spec.role) % 9973) * 1000 + s.counter * 11 + s.mid;
+    const n = LS.makeNpc ? LS.makeNpc(seed, Object.assign({}, spec, { g })) : { name: spec.role, genome: { archetype: 'yoruba' }, gender: g || 'fem' };
+    const c = s.cast[spec.role] = { id: 'c:' + spec.role, role: spec.role, name: n.name, sub: spec.sub || LS.titleCase(spec.role), genome: n.genome, gender: n.gender, since: s.month };
+    const pe = E.person(s, c.id);
+    pe.name = c.name; pe.genome = c.genome; pe.sub = c.sub;
+    if (spec.rel != null) pe.rel = spec.rel;
+    if (spec.mem) pe.mem[spec.mem[0]] = { m: s.month, t: spec.mem[1] };
+    return c;
+  };
+
+  /** ['storyId', 'what just happened', 'done' | 'failed'?] adds a line to a story's log (and closes it if given a state). */
+  function storyNote(s, [id, text, state]) {
+    const st = s.stories[id] || (s.stories[id] = { id, since: s.month, log: [], state: 'open' });
+    if (text) st.log.push({ m: s.month, t: LS.fill(text, vars(s)) });
+    if (state) st.state = state;
+  }
+  E.storyNote = storyNote;
+  /** Stories you are in, open ones first. */
+  E.stories = s => Object.values(s.stories || {}).sort((a, b) => (a.state === 'open' ? 0 : 1) - (b.state === 'open' ? 0 : 1) || b.since - a.since);
 
   /**
    * Resolve a choice. side: 'L' | 'R'. extra: { matched: bool (server decided, for real players) }
@@ -219,13 +279,14 @@
       if (s.stats[k] <= 0.5) return k + '_low';
       if (s.stats[k] >= 99.5) return k + '_high';
     }
+    if (s.forceEnd) return s.forceEnd;
     if (s.age >= END_AGE) return 'victory';
     return null;
   }
 
   /** Spend a lucky charm: the bar that ended you is pulled back from the edge and life goes on. */
   E.revive = function (s) {
-    if (!s.over || s.over === 'victory') return false;
+    if (!s.over || s.over === 'victory' || s.over === 'japa') return false;
     const k = s.over.replace(/_(low|high)$/, '');
     if (!LS.STAT_KEYS.includes(k)) return false;
     s.stats[k] = s.over.endsWith('_low') ? 38 : 62;
@@ -380,7 +441,7 @@
 
   function endingCard(s, key) {
     const e = LS.ENDINGS[key] || LS.ENDINGS.victory;
-    return { id: 'end:' + key, kind: 'ending', ending: key, lose: key !== 'victory', dom: 'end', who: { type: 'cast', key: e.who, name: LS.CAST && LS.CAST[e.who] ? LS.CAST[e.who].name : '', sub: e.title }, mood: e.mood,
+    return { id: 'end:' + key, kind: 'ending', ending: key, lose: key !== 'victory' && key !== 'japa', stamp: e.stamp || null, dom: 'end', who: { type: 'cast', key: e.who, name: LS.CAST && LS.CAST[e.who] ? LS.CAST[e.who].name : '', sub: e.title }, mood: e.mood,
       title: e.title, text: e.text, time: 0, L: { t: 'New life', fx: {}, ex: { ic: 'bed' } }, R: { t: 'New life', fx: {}, ex: { ic: 'heart' } } };
   }
   E.endingCard = endingCard;
@@ -388,7 +449,7 @@
   // ------------------------------------------------------------------ score & summary
   E.score = function (s) {
     return Math.round(s.month * 3 + s.loves * 40 + s.job * 60 + s.home * 50 + s.friends * 8 + (s.status === 'married' ? 120 : s.status === 'engaged' ? 60 : s.status === 'dating' ? 25 : 0)
-      + (s.over === 'victory' ? 400 : 0));
+      + (s.over === 'victory' ? 400 : s.over === 'japa' ? 150 : 0) + E.stories(s).filter(x => x.state === 'done').length * 30);
   };
 
   /** A short description of where you are in life, for the status sheet and for other players. */
