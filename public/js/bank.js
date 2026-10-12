@@ -20,10 +20,11 @@
       : (e && e.message) || 'That didn’t go through.';
   };
 
-  LS.showBank = async function () {
+  /** opts.buy: opened from the naira balance, so the real-money packs come first. */
+  LS.showBank = async function (opts = {}) {
     const G = LS.Game, S = LS.social;
     const body = h('div.bank', h('p.muted', 'Loading…'));
-    LS.sheet.open('Bank', body);
+    LS.sheet.open(opts.buy ? 'Buy naira' : 'Bank', body);
 
     let info = null;
     try { info = await S.shop(); } catch (e) { /* offline: the cached numbers below still show */ }
@@ -65,10 +66,11 @@
 
     // ---------------------------------------------------------------- or buy it with real money
     const packs = (info && info.packs) || [];
+    let packsEl = null;
     if (packs.length) {
-      body.append(LS.ui.section('Or buy naira with real money',
+      body.append(packsEl = LS.ui.section(opts.buy ? 'Buy naira with real money' : 'Or buy naira with real money',
         h('div.list', packs.map(p => h('button.item.pack', { type: 'button', onclick: () => buy(p) },
-          h('div.item-text', h('b', `${p.name} in the bank`), h('small', `Pay ₦${p.naira.toLocaleString('en-NG')}`)),
+          h('div.item-text', h("b", p.name), h('small', `Pay ₦${p.naira.toLocaleString('en-NG')}`)),
           h('b.pts', `₦${p.naira.toLocaleString('en-NG')}`)))),
         h('p.fine', 'Paid through Lagos Life’s own pay sheet. Your card never touches the game.')));
     }
@@ -85,6 +87,8 @@
       h('div.actions', h('button.btn', { type: 'button', onclick: () => spend(n) }, 'Buy charms'))));
 
     body.append(h('p.fine', 'In-game naira is not real money and can’t be cashed out.'));
+    // opened to buy: the packs sit right under the balance, not below the Wallet exchange
+    if (opts.buy && packsEl) body.querySelector('.bank-head').after(packsEl);
 
     // ---------------------------------------------------------------- actions
     async function exchange(points) {
@@ -93,7 +97,7 @@
         G.s.stats.wallet = Math.max(0, G.s.stats.wallet - points);
         G.updateHud(); G.save();
         G.toast(`${LS.naira(points * rate)} in the bank.`);
-        LS.showBank();
+        LS.showBank(opts);
       } catch (e) { G.toast(reason(e)); }
     }
 
@@ -101,7 +105,7 @@
       try {
         const r = await S.buyNaira(p.id);
         G.toast(`${LS.naira(r.bank)} in the bank.`);
-        LS.showBank();
+        LS.showBank(opts);
       } catch (e) { G.toast(reason(e)); }
     }
 
@@ -110,7 +114,7 @@
         await S.buyCharmsWithNaira(count);
         G.toast(`Lucky charms: ${G.charmCount()}`);
         G.updateHud();
-        LS.showBank();
+        LS.showBank(opts);
       } catch (e) { G.toast(reason(e)); }
     }
   };

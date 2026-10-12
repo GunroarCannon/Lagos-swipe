@@ -11,7 +11,7 @@
     player: { id: 'guest', name: 'Guest', avatar: null },
     sdk: null,
     _session: null,         // { session, exp }
-    _pause: [], _resume: [],
+    _pause: [], _resume: [], _purchase: [],
 
     async init() {
       const framed = window.self !== window.top;
@@ -25,6 +25,7 @@
             P._session = { session: r.session, exp: Date.now() + 14 * 60 * 1000 };
             window.Vatar.onPause(() => P._pause.forEach(f => f()));
             window.Vatar.onResume(() => P._resume.forEach(f => f()));
+            window.Vatar.onPurchase(p => P._purchase.forEach(f => f(p)));
             return P;
           }
         } catch (e) { console.warn('[platform] Vatar unavailable, running as a guest:', e && (e.code || e.message)); }
@@ -50,6 +51,13 @@
 
     onPause(f) { P._pause.push(f); },
     onResume(f) { P._resume.push(f); },
+    /** A purchase confirmed while no purchase() call was waiting (the player came back from paying). */
+    onPurchase(f) { P._purchase.push(f); },
+    /** Paid purchases Vatar still shows as not delivered: { purchaseId, productId }[]. */
+    async pending() {
+      if (!P.framed) return [];
+      try { return (await P.sdk.purchases()) || []; } catch (e) { return []; }
+    },
 
     /** Buy a product with real naira through the world's pay sheet (or a pretend purchase in dev). */
     async purchase(productId) {

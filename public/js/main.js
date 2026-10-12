@@ -40,7 +40,7 @@
         $('#splash').classList.add('gone');
         $('#app').dataset.screen = 'game';
         LS.Game.init(LS.Game.look, saved && saved.run, meta);
-        LS.social.start().then(() => { LS.Game.updateHud(); LS.social.saveProfile(LS.Game.look, LS.Engine.life(LS.Game.s)); });
+        LS.social.start().then(() => { LS.Game.updateHud(); LS.social.saveProfile(LS.Game.look, LS.Engine.life(LS.Game.s)); return LS.social.claimPending(); }).then(() => LS.Game.updateHud());
       };
       if (!LS.look) {
         $('#splash').classList.add('gone');
@@ -53,7 +53,8 @@
     $('#btn-life').onclick = () => LS.showLife();
     $('#btn-inbox').onclick = () => LS.showInbox();
     $('#btn-menu').onclick = () => LS.showMenu();
-    $('#hud-money').onclick = () => LS.showBank();
+    $('#hud-money').onclick = () => LS.showBank({ buy: true });
+    LS.platform.onPurchase(p => LS.social.claim(p).then(() => { LS.Game.toast('Your purchase came through.'); LS.Game.updateHud(); }).catch(e => console.warn('[claim]', e.code || e.message)));
     $('#me-corner').onclick = () => LS.customize({ intro: false });
     LS.social.onChange((kind, data) => { if (kind === 'news') LS.Game.toast('New in your inbox ✉'); LS.Game.updateHud && LS.Game.s && LS.Game.updateHud(); });
     LS.platform.onPause(() => { LS.portrait.paused = true; LS.sound.stop(); });

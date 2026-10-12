@@ -57,20 +57,33 @@
     /** Buy a pack of lucky charms through the world's pay sheet; the server verifies before crediting. */
     async buyCharms(productId = 'lucky_charms_5') {
       const p = await LS.platform.purchase(productId);
-      const r = await LS.api.post('/claim', { purchaseId: p.purchaseId, productId });
+      return S.claim(p, productId);
+    },
+
+    /** Our server checks a Vatar purchase, credits it once and marks it delivered (the dashboard's tick). */
+    async claim(p, productId) {
+      const r = await LS.api.post('/claim', { purchaseId: p.purchaseId, productId: productId || p.productId });
       if (r.delivered === false) console.warn('[claim] Vatar did not mark the purchase delivered:', r.deliverError);
-      S.charms = r.charms; S._emit('me');
+      if (r.charms != null) S.charms = r.charms;
+      if (r.bank != null) S.bank = r.bank;
+      S._emit('me');
       return r;
+    },
+
+    /** Paid earlier but never delivered (a reload mid-payment, or a deliver that failed): claim each one now. */
+    async claimPending() {
+      let n = 0;
+      for (const p of await LS.platform.pending()) {
+        try { await S.claim(p); n++; } catch (e) { console.warn('[claim] pending purchase', p.purchaseId, e.code || e.message); }
+      }
+      if (n && LS.Game && LS.Game.toast) LS.Game.toast(n === 1 ? 'Your purchase came through.' : `${n} purchases came through.`);
+      return n;
     },
 
     /** Buy naira with real money: the world's pay sheet, then our server verifies before crediting. */
     async buyNaira(productId) {
       const p = await LS.platform.purchase(productId);
-      const r = await LS.api.post('/claim', { purchaseId: p.purchaseId, productId });
-      if (r.delivered === false) console.warn('[claim] Vatar did not mark the purchase delivered:', r.deliverError);
-      if (r.bank != null) S.bank = r.bank;
-      S._emit('me');
-      return r;
+      return S.claim(p, productId);
     },
 
     /** What money can buy, priced by the server so the game never invents a price. */
