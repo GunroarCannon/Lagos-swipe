@@ -1,0 +1,11 @@
+{
+  "name": "lagos-swipe",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Lagos Swipe: a Reigns-style dating sim for Lagos Life, with async multiplayer.",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test/api.test.js && node test/engine.test.js"
+  },
+  "engines": { "node": ">=18" }
+}

@@ -1,0 +1,3 @@
+[submodule "public/portrait-js"]
+	path = public/portrait-js
+	url = https://github.com/GunroarCannon/portrait-js.git

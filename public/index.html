@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#ead8b0">
+  <title>Lagos Swipe</title>
+  <meta name="description" content="A paper-and-ink life sim in Reigns format: swipe your way through work, family, money, friends and love in Lagos.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Permanent+Marker&family=Kalam:wght@300;400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/game.css">
+</head>
+<body>
+  <div id="app" class="app" data-screen="loading">
+
+    <header id="hud" class="hud">
+      <div class="hud-top">
+        <button id="btn-life" class="hud-btn" type="button" aria-label="Your life">
+          <span class="hud-age"><b id="hud-age">Age 23</b><small id="hud-sub">Month 1</small></span>
+        </button>
+        <div class="hud-money" id="hud-money" aria-live="polite">₦0</div>
+        <div class="hud-right">
+          <button id="btn-inbox" class="icon-btn" type="button" aria-label="Inbox">
+            <svg viewBox="0 0 24 24"><path d="M4 7h16v10H4z"/><path d="M4 8l8 6 8-6"/></svg><i id="inbox-badge" class="badge" hidden>0</i>
+          </button>
+          <button id="btn-menu" class="icon-btn" type="button" aria-label="Menu">
+            <svg viewBox="0 0 24 24"><path d="M5 7h14M5 12h14M5 17h14"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="bars" id="bars"></div>
+    </header>
+
+    <main id="stage" class="stage">
+      <div id="choice-hint" class="choice-hint" aria-hidden="true"></div>
+      <div id="stack" class="stack">
+        <div class="card ghost" aria-hidden="true"></div>
+        <div id="card" class="card" role="group" aria-live="polite"></div>
+      </div>
+      <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    </main>
+
+    <footer id="dock" class="dock">
+      <button id="me-corner" class="me-corner" type="button" aria-label="Your look">
+        <canvas id="me-canvas" width="120" height="150"></canvas>
+        <img id="me-avatar" alt="" hidden>
+        <span class="me-tag">You</span>
+      </button>
+      <div class="choices">
+        <button id="btn-left" class="choice choice-l" type="button"><span id="lbl-left">Pass</span></button>
+        <button id="btn-super" class="choice choice-s" type="button" hidden aria-label="Super like"><b>★</b><small id="super-count">0</small></button>
+        <button id="btn-right" class="choice choice-r" type="button"><span id="lbl-right">Like</span></button>
+      </div>
+    </footer>
+
+    <div id="scrim" class="scrim" hidden></div>
+    <div id="sheet" class="sheet" hidden role="dialog" aria-modal="true"></div>
+
+    <div id="splash" class="splash">
+      <div class="splash-inner">
+        <h1>Lagos<br>Swipe</h1>
+        <p class="tag">A paper-and-ink life sim.<br>Work, family, money, friends and love.</p>
+        <button id="splash-go" class="btn primary" type="button" disabled>Loading…</button>
+        <p class="fine" id="splash-note"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- portrait-js: the portrait engine (a git submodule). Same order as its index.html, without its UI. -->
+  <script src="portrait-js/js/core/util.js"></script>
+  <script src="portrait-js/js/core/registry.js"></script>
+  <script src="portrait-js/js/core/painter.js"></script>
+  <script src="portrait-js/js/core/geometry.js"></script>
+  <script src="portrait-js/js/data/swatches.js"></script>
+  <script src="portrait-js/js/data/controls.js"></script>
+  <script src="portrait-js/js/data/styles.js"></script>
+  <script src="portrait-js/js/data/paper-texture.js"></script>
+  <script src="portrait-js/js/parts/patterns.js"></script>
+  <script src="portrait-js/js/parts/features.js"></script>
+  <script src="portrait-js/js/parts/hair.js"></script>
+  <script src="portrait-js/js/parts/headwear.js"></script>
+  <script src="portrait-js/js/parts/clothing.js"></script>
+  <script src="portrait-js/js/parts/jewelry.js"></script>
+  <script src="portrait-js/js/parts/regalia.js"></script>
+  <script src="portrait-js/js/parts/accessories.js"></script>
+  <script src="portrait-js/js/parts/modern.js"></script>
+  <script src="portrait-js/js/parts/world-regalia.js"></script>
+  <script src="portrait-js/js/parts/expressions.js"></script>
+  <script src="portrait-js/js/data/archetypes.js"></script>
+  <script src="portrait-js/js/data/archetypes-modern.js"></script>
+  <script src="portrait-js/js/data/roles.js"></script>
+  <script src="portrait-js/js/core/generator.js"></script>
+  <script src="portrait-js/js/core/render.js"></script>
+  <script src="portrait-js/js/core/actor.js"></script>
+  <script src="portrait-js/js/core/genetics.js"></script>
+  <script src="portrait-js/js/extensions/naija.js"></script>
+  <script src="portrait-js/js/extensions/speech-synth.js"></script>
+
+  <!-- the game -->
+  <script src="js/util.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/platform.js"></script>
+  <script src="js/people.js"></script>
+  <script src="js/cards.js"></script>
+  <script src="js/engine.js"></script>
+  <script src="js/social.js"></script>
+  <script src="js/portrait.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/sheets.js"></script>
+  <script src="js/customizer.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
