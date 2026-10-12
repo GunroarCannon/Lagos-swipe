@@ -140,7 +140,7 @@
 
     if (g) {
       const mood = card.kind === 'meet' || card.kind === 'real' ? MOODS_NEW[LS.hash(card.profile.id) % MOODS_NEW.length] : card.mood;
-      G.handle = LS.portrait.live(frame, g, { width: 300, mood: card.kind === 'meet' && card.temptation ? 'flirty' : mood });
+      G.handle = LS.portrait.live(frame, g, { width: 380, mood: card.kind === 'meet' && card.temptation ? 'flirty' : mood });
       if (card.profile && card.profile.avatar) pic.append(h('img.avatar-chip', { src: card.profile.avatar, alt: '' }));
     } else {
       frame.innerHTML = LS.vignette(placeArt || 'skyline');

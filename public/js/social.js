@@ -58,6 +58,7 @@
     async buyCharms(productId = 'lucky_charms_5') {
       const p = await LS.platform.purchase(productId);
       const r = await LS.api.post('/claim', { purchaseId: p.purchaseId, productId });
+      if (r.delivered === false) console.warn('[claim] Vatar did not mark the purchase delivered:', r.deliverError);
       S.charms = r.charms; S._emit('me');
       return r;
     },
@@ -66,6 +67,7 @@
     async buyNaira(productId) {
       const p = await LS.platform.purchase(productId);
       const r = await LS.api.post('/claim', { purchaseId: p.purchaseId, productId });
+      if (r.delivered === false) console.warn('[claim] Vatar did not mark the purchase delivered:', r.deliverError);
       if (r.bank != null) S.bank = r.bank;
       S._emit('me');
       return r;

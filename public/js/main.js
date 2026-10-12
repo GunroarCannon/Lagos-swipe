@@ -53,6 +53,7 @@
     $('#btn-life').onclick = () => LS.showLife();
     $('#btn-inbox').onclick = () => LS.showInbox();
     $('#btn-menu').onclick = () => LS.showMenu();
+    $('#hud-money').onclick = () => LS.showBank();
     $('#me-corner').onclick = () => LS.customize({ intro: false });
     LS.social.onChange((kind, data) => { if (kind === 'news') LS.Game.toast('New in your inbox ✉'); LS.Game.updateHud && LS.Game.s && LS.Game.updateHud(); });
     LS.platform.onPause(() => { LS.portrait.paused = true; LS.sound.stop(); });
