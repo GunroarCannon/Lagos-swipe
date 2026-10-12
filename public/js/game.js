@@ -160,10 +160,10 @@
     deal(el);
     clearTimeout(G._dealT); G._dealT = setTimeout(() => { if (G.card === card) G.busy = false; }, 280);
 
-    // they speak the first sentence, if sound is on
-    if (G.handle && card.kind !== 'ending') {
+    // they speak the first sentence, if talk sound is on
+    if (G.handle && card.kind !== 'ending' && LS.sound.enabled && LS.sound.unlocked && LS.sound.talk) {
       const line = String(card.text).replace(/^[^“"]*[“"]/, '').replace(/^[A-Za-z. ]+:\s*/, '').split(/(?<=[.!?…”])\s/)[0].slice(0, 90);
-      setTimeout(() => { if (G.card === card && LS.sound.enabled && LS.sound.unlocked) G.handle.say(line); }, 420);
+      setTimeout(() => { if (G.card === card) G.handle.say(line); }, 420);
     }
   };
 

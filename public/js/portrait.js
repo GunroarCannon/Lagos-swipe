@@ -6,13 +6,15 @@
   // ------------------------------------------------------------------ sound (only after the first tap)
   const snd = LS.sound = {
     enabled: LS.storage.get('ls.sound', true),
+    talk: LS.storage.get('ls.sound.talk', false),   // portrait-js talk/babble voices (speech-synth.js)
     unlocked: false,
     unlock() { snd.unlocked = true; snd.apply(); },
     set(on) { snd.enabled = !!on; LS.storage.set('ls.sound', snd.enabled); snd.apply(); },
+    setTalk(on) { snd.talk = !!on; LS.storage.set('ls.sound.talk', snd.talk); snd.apply(); },
     apply() {
       if (!window.PM || !PM.voice) return;
-      try { PM.voice.mode = snd.unlocked && snd.enabled ? 'synth' : 'off'; } catch (e) { /* ignore */ }
-      if (!snd.enabled || !snd.unlocked) try { PM.voice.stopAll(); } catch (e) { /* ignore */ }
+      try { PM.voice.mode = (snd.unlocked && snd.enabled && snd.talk) ? 'synth' : 'off'; } catch (e) { /* ignore */ }
+      if (!snd.enabled || !snd.unlocked || !snd.talk) try { PM.voice.stopAll(); } catch (e) { /* ignore */ }
     },
     stop() { try { PM.voice.stopAll(); } catch (e) { /* ignore */ } },
 
