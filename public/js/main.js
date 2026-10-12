@@ -13,6 +13,10 @@
     await LS.platform.init();
     await ready;
     try { LS.splashStickers(); } catch (e) { console.error(e); }
+    // Read their Lagos Life photo while they're still on the splash, so the first portrait is already close
+    // to their face. Started, never awaited here: a slow model must not hold up Start.
+    const photo = { look: null, pending: null };
+    if (LS.platform.player.avatar) photo.pending = LS.avatarLook(LS.platform.player.avatar).then(r => { photo.look = r; return r; });
     const saved = LS.Game.load();
     const meta = Object.assign({ charms: 1, runs: 0, best: 0, endings: {} }, saved && saved.meta);
     LS.look = saved && saved.look;
@@ -24,8 +28,12 @@
       LS.sound.unlock();
       let look = LS.look;
       if (!look) {
-        const colors = await LS.sampleAvatar(LS.platform.player.avatar);
-        look = { genome: LS.playerGenome(LS.platform.player.id, 'fem', colors), bio: LS.defaultBio(), locks: [] };
+        // the photo's colours and presentation when we already have them, the free on-device sample otherwise
+        const colors = photo.look || await LS.sampleAvatar(LS.platform.player.avatar);
+        const gender = (photo.look && photo.look.gender) || 'fem';
+        const bio = LS.defaultBio();
+        bio.looking = LS.opposite(gender);
+        look = { genome: LS.playerGenome(LS.platform.player.id, gender, colors), bio, locks: [] };
       }
       LS.Game.look = look; LS.Game.meta = meta;
       const begin = () => {
@@ -38,7 +46,7 @@
         $('#splash').classList.add('gone');
         LS.Game.s = null;
         LS.Game.buildHud();
-        LS.customize({ intro: true, onSave: begin });
+        LS.customize({ intro: true, onSave: begin, photo });
       } else begin();
     };
 

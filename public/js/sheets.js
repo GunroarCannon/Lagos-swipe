@@ -57,13 +57,15 @@
     const rows = h('div.rows',
       lifeRow('Work', J.title, J.blurb), lifeRow('Home', H.title, H.blurb),
       s.partner ? h('div.lrow', h('div.k', 'Partner'), h('div.v', h('div.mini', thumb(Object.assign({}, s.partner.genome), 44)), h('div', h('b', s.partner.name), h('small', LS.STATUS[s.status])))) : lifeRow('Partner', 'None yet', 'Owambes are good for that.'),
-      lifeRow('Friends', String(s.friends), s.friends >= 5 ? 'A proper crew.' : 'Go to more owambes.'));
+      lifeRow('Friends', String(s.friends), s.friends >= 5 ? 'A proper crew.' : 'Go to more owambes.'),
+      lifeRow('Bank', LS.naira(LS.social.bank), `${G.charmCount()} lucky charm${G.charmCount() === 1 ? '' : 's'} in hand`));
     const bars = h('div.statrows', LS.STAT_KEYS.map(k => h('div.srow2', h('span', LS.STATS[k].label), h('div.track', h('i', { style: { width: Math.round(s.stats[k]) + '%' }, class: 'fill f-' + k })), h('small', LS.STATS[k].blurb))));
     const meta = G.meta;
     const found = Object.keys(meta.endings || {}).length;
     const legacy = h('div.legacy', h('div', 'Runs ', h('b', meta.runs || 0)), h('div', 'Best ', h('b', meta.best || 0)), h('div', 'Endings ', h('b', `${found}/${Object.keys(LS.ENDINGS).length}`)));
     const actions = h('div.actions',
       h('button.btn.primary', { type: 'button', onclick: () => LS.customize({ intro: false }) }, 'Customise your look'),
+      h('button.btn', { type: 'button', onclick: () => LS.showBank() }, 'Bank'),
       h('button.btn', { type: 'button', onclick: () => LS.showPeople() }, 'People & stories'),
       h('button.btn', { type: 'button', onclick: () => LS.showBoard() }, 'Leaderboard'));
     Sheet.open('Your life', h('div', hero, rows, section('How you’re doing', bars), legacy, actions));
@@ -141,7 +143,9 @@
     const body = h('div.menu',
       section('Sound', sound),
       section('Lucky charms', h('p.muted', `A lucky charm pulls you back once when a bar hits the edge. You have ${G.charmCount()}.`),
-        h('button.btn.primary', { type: 'button', onclick: buy }, 'Get 5 for ₦100')),
+        h('button.btn.primary', { type: 'button', onclick: buy }, 'Get 3 for ₦100')),
+      section('Bank', h('p.muted', `You have ${LS.naira(LS.social.bank)} of in-game naira. Buy more out of your Wallet stat, or with real money, and spend it on lucky charms.`),
+        h('button.btn', { type: 'button', onclick: () => { Sheet.close(); LS.showBank(); } }, 'Open the bank')),
       section('Play', h('div.actions', h('button.btn', { type: 'button', onclick: () => LS.showPeople() }, 'People & stories'), h('button.btn', { type: 'button', onclick: () => LS.showBoard() }, 'Leaderboard'),
         h('button.btn', { type: 'button', onclick: () => { if (confirm('Start a new life? This one ends here.')) { Sheet.close(); G.restart(); } } }, 'New life'))),
       section('About', h('p.muted', 'Lagos Swipe is a life sim. Decide with a swipe or a tap on a postcard. Keep Wallet, Heart, Hustle and Peace off the ends, look after the people who matter, and reach 35.'),

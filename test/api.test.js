@@ -2,6 +2,7 @@
 'use strict';
 const assert = require('node:assert/strict');
 const server = require('../server');
+const vision = require('../lib/vision');
 
 const dev = (id, name) => 'dev.' + Buffer.from(JSON.stringify({ id, name })).toString('base64url');
 let base;
@@ -65,9 +66,9 @@ const bio = { job: 'banker', area: 'lekki', vibes: ['suya', 'gym'], looking: 'al
   // lucky charms: spending needs inventory; dev claim credits and is idempotent
   assert.equal((await call('POST', '/api/spend', A, { n: 1 })).status, 402);
   const claim = await call('POST', '/api/claim', A, { purchaseId: 'dev_abc123', productId: 'lucky_charms_5' });
-  assert.equal(claim.charms, 5);
-  assert.equal((await call('POST', '/api/claim', A, { purchaseId: 'dev_abc123', productId: 'lucky_charms_5' })).charms, 5);
-  assert.equal((await call('POST', '/api/spend', A, { n: 1 })).charms, 4);
+  assert.equal(claim.charms, 3);
+  assert.equal((await call('POST', '/api/claim', A, { purchaseId: 'dev_abc123', productId: 'lucky_charms_5' })).charms, 3);
+  assert.equal((await call('POST', '/api/spend', A, { n: 1 })).charms, 2);
 
   // scores, leaderboard, block
   await call('POST', '/api/score', A, { score: 900, days: 40, loves: 2 });
@@ -79,6 +80,59 @@ const bio = { job: 'banker', area: 'lekki', vibes: ['suya', 'gym'], looking: 'al
   assert.equal((await call('GET', '/api/inbox', A)).matches.length, 0);
   assert.equal((await call('POST', '/api/report', A, { target: 'd_chidi003', reason: 'spam' })).ok, true);
   assert.equal((await call('GET', '/api/me', A)).profile.best, 900);
+
+  // ---- the bank: naira is bought with Wallet stat points, or with real money through a Vatar pack
+  const shop = await call('GET', '/api/bank', A);
+  assert.equal(shop.bank, 0);
+  assert.equal(shop.charms, 2);
+  assert.deepEqual(shop.packs.map(p => p.id), ['naira_100', 'naira_500', 'naira_200']);
+  assert.equal(shop.rate, 3500);
+  assert.equal(shop.charmNgn, 10000);
+
+  // a charm you cannot afford changes nothing
+  assert.equal((await call('POST', '/api/charms/buy', A, { n: 1 })).status, 402);
+  assert.equal((await call('GET', '/api/bank', A)).bank, 0);
+  assert.equal((await call('GET', '/api/bank', A)).charms, 2);
+
+  // Wallet points in. 10 points at 3,500 is 35,000; nonsense is refused and costs nothing
+  assert.equal((await call('POST', '/api/exchange', A, { points: 0 })).status, 400);
+  assert.equal((await call('POST', '/api/exchange', A, { points: 41 })).status, 400);
+  assert.equal((await call('POST', '/api/exchange', A, { points: 'ten' })).status, 400);
+  const x1 = await call('POST', '/api/exchange', A, { points: 10 });
+  assert.equal(x1.bank, 35000);
+  assert.equal(x1.gained, 35000);
+  assert.equal((await call('GET', '/api/me', A)).bank, 35000);
+
+  // naira buys charms, and the balance is what is left
+  const buy = await call('POST', '/api/charms/buy', A, { n: 1 });
+  assert.equal(buy.bank, 25000);
+  assert.equal(buy.charms, 3);
+  assert.equal((await call('POST', '/api/charms/buy', A, { n: 3 })).status, 402);   // 30,000 > 25,000
+  assert.equal((await call('GET', '/api/bank', A)).charms, 3);
+
+  // the daily ceiling on turning Wallet money over
+  await call('POST', '/api/exchange', A, { points: 40 });
+  await call('POST', '/api/exchange', A, { points: 40 });
+  assert.equal((await call('GET', '/api/bank', A)).exchangedToday, 90);
+  assert.equal((await call('POST', '/api/exchange', A, { points: 40 })).status, 429);
+  assert.equal((await call('POST', '/api/exchange', A, { points: 30 })).status, 200);   // 120 exactly is allowed
+  assert.equal((await call('GET', '/api/bank', A)).exchangedToday, 120);
+  // 35,000 − 10,000 for the charm, plus 140,000 + 140,000 + 105,000 turned over
+  assert.equal((await call('GET', '/api/bank', A)).bank, 410000);
+
+  // real money: a pack credits naira once, and a repeat is not paid twice
+  const before = (await call('GET', '/api/bank', A)).bank;
+  assert.equal((await call('POST', '/api/claim', A, { purchaseId: 'dev_naira001', productId: 'naira_500' })).bank, before + 275000);
+  assert.equal((await call('POST', '/api/claim', A, { purchaseId: 'dev_naira001', productId: 'naira_500' })).bank, before + 275000);
+  assert.equal((await call('POST', '/api/claim', A, { purchaseId: 'dev_naira002', productId: 'naira_9999' })).status, 400);
+
+  // ---- reading a photo into a portrait default
+  assert.equal((await call('POST', '/api/avatar-look', A, {})).status, 400);                    // nothing to read
+  assert.equal((await call('POST', '/api/avatar-look', A, { avatar: 'http://x/a.png' })).status, 400);
+  if (!vision.enabled) {
+    const png = 'data:image/png;base64,' + Buffer.from('not really a png').toString('base64');
+    assert.equal((await call('POST', '/api/avatar-look', A, { avatar: png })).status, 503);      // no key on this server
+  }
 
   console.log('api: all tests passed');
   server.close();

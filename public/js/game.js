@@ -110,6 +110,16 @@
     return out.sort((a, b) => Math.abs(b.rel - 50) - Math.abs(a.rel - 50)).slice(0, 3);
   }
 
+  /** Flag a caption that runs past the card, so it gets a soft edge to show there is more to read. */
+  function markScrollable(el) {
+    const look = () => el.classList.toggle('scrollable', el.scrollHeight - el.clientHeight > 2);
+    setTimeout(look, 60);
+    if (!markScrollable.bound) {
+      markScrollable.bound = true;
+      window.addEventListener('resize', () => { const t = $('.card-text'); if (t) t.classList.toggle('scrollable', t.scrollHeight - t.clientHeight > 2); });
+    }
+  }
+
   G.showCard = function (card) {
     const s = G.s, el = $('#card');
     if (G.handle) { G.handle.destroy(); G.handle = null; }
@@ -143,12 +153,15 @@
       const rb = rememberedBy(s);
       if (rb.length) el.append(h('div.remembered', h('b', 'People remember'), rb.map(r => h('p', h('i', r.name + ': '), r.t))));
     } else {
-      const cap = h('p.line', card.text);
-      el.append(cap);
-      if (card.kind === 'real' && card.profile.vibes && card.profile.vibes.length) el.append(h('div.chips', card.profile.vibes.slice(0, 3).map(v => h('span.chip', LS.VIBES[v] || v))));
+      // the words live in their own box: a long card scrolls rather than losing its ending off the bottom
+      const text = h('div.card-text');
+      text.append(h('p.line', card.text));
+      if (card.kind === 'real' && card.profile.vibes && card.profile.vibes.length) text.append(h('div.chips', card.profile.vibes.slice(0, 3).map(v => h('span.chip', LS.VIBES[v] || v))));
       // what this person remembers about you, a hint for the thoughtful
       const pk = card.pkey, mems = pk ? E.memories(s, pk) : [];
-      if (mems.length && card.kind !== 'meet') el.append(h('p.recall', '“' + mems[0].t + '”'));
+      if (mems.length && card.kind !== 'meet') text.append(h('p.recall', '“' + mems[0].t + '”'));
+      el.append(text);
+      markScrollable(text);
     }
     el.append(h('div.stamp.sl', { html: '' }), h('div.stamp.sr'));
     $('.stamp.sl', el).textContent = card.L.t; $('.stamp.sr', el).textContent = card.R.t;

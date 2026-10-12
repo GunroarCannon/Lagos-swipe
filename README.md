@@ -9,7 +9,7 @@ Extended scenes (a date, a job interview, a family meeting) are chains of cards 
 * **Portraits**: [portrait-js](https://github.com/GunroarCannon/portrait-js) as a git submodule at `public/portrait-js`
   (extended with a Nigerian & African pack, `js/extensions/naija.js`). Your portrait is seeded from your Lagos Life avatar's colours and you can customise it from the corner button.
 * **Multiplayer (async)**: real players turn up in your day; saying hello to each other connects you, and you message with preset lines. Notifications arrive in the Inbox. No free text anywhere, so nothing to moderate.
-* **Lagos Life**: runs inside the Games app with the Vatar SDK (player name + avatar, session tokens, leaderboard, a ₦100 "5 lucky charms" product (a charm pulls you back once when a bar hits the edge)). Outside the frame it runs as a guest.
+* **Lagos Life**: runs inside the Games app with the Vatar SDK (player name + avatar, session tokens, leaderboard, a ₦100 "3 lucky charms" product (a charm pulls you back once when a bar hits the edge)). Outside the frame it runs as a guest.
 
 ## Run it
 

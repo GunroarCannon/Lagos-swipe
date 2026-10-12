@@ -43,6 +43,9 @@
       if (k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2), v);
       else if (k === 'style' && typeof v === 'object') Object.assign(el.style, v);
       else if (k === 'html') el.innerHTML = v;
+      // merge, never replace: h('button.tcell', { class: 'on' }) must keep .tcell, or every styled chip,
+      // thumbnail and swatch loses the class it was built with and renders bare
+      else if (k === 'class' || k === 'className') { for (const c of String(v).split(/\s+/)) if (c) el.classList.add(c); }
       else if (v === true) el.setAttribute(k, '');
       else el.setAttribute(k, v);
     }

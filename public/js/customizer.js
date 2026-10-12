@@ -7,8 +7,7 @@
   const HAIR_SKIP = new Set(['mohawk', 'spiky', 'spiky-up', 'swept-spikes', 'wild-spikes', 'loopies', 'wolf-tail', 'messy', 'mullet']);
   const HEAD_SKIP = new Set(['crown', 'imperial-crown', 'tiara', 'jewelled-turban', 'phoenix-crown', 'topknot-crown', 'spire-crown', 'fur-crown', 'gold-diadem', 'circlet', 'laurel', 'kokoshnik', 'forehead-protector', 'cowl', 'futou', 'gat', 'maang-tikka', 'jester-cap', 'fringe-band', 'coin-band', 'bead-band', 'jasmine', 'flower-crown', 'chef-toque', 'hard-hat', 'miner-helmet', 'fire-helmet', 'captain-cap', 'sailor-cap', 'mortarboard', 'top-hat', 'cowboy-hat', 'bowler', 'conical-hat', 'fur-hat', 'chullo', 'peaked-cap', 'scrub-cap']);
   const CLOTH_SKIP = new Set(['armour', 'hero-suit', 'motley', 'rags', 'royal-robe', 'fire-coat', 'lab-coat', 'chef-jacket', 'scrubs', 'apron', 'overalls', 'academic-gown', 'sailor-collar', 'gakuran', 'military-tunic', 'ruff', 'hanbok', 'deel', 'huipil', 'poncho', 'sari', 'fur-collar', 'field-jacket', 'bisht', 'sherwani']);
-  const SKINS = ['#f1d2b8', '#d4a87f', '#b9875a', '#aa784c', '#916039', '#7f5131', '#69402a', '#573421', '#45291a', '#352015'];
-  const HAIRS = ['#151210', '#221b17', '#3a2a1f', '#5c3f2b', '#7a2e1a', '#a8874f', '#9d9a94', '#7a2e7a', '#b3262a', '#3a6ea5', '#1b6b4a', '#d4a017'];
+  const SKINS = LS.SKINS, HAIRS = LS.HAIRS;   // one source of truth, shared with the photo reader
   const CLOTHS = ['#16120f', '#f1e6cc', '#008751', '#b3262a', '#d4a017', '#1c4e9a', '#7a2e7a', '#e8590c', '#2f5f6e', '#8a4a2a', '#e8a0b4', '#6b7f3a'];
   const SLIDERS = [['faceWidth', 'Face width', 0.86, 1.14], ['jaw', 'Jaw', 0.65, 0.98], ['eyeSize', 'Eyes', 0.8, 1.25], ['noseWidth', 'Nose', 0.8, 1.4], ['lipFull', 'Lips', 0.4, 1.25], ['browThick', 'Brows', 0.5, 1.8], ['hairVolume', 'Hair volume', 0.6, 1.5], ['hairLength', 'Hair length', 0.6, 1.5]];
   const LOOK_TABS = [['face', 'Face'], ['hair', 'Hair'], ['head', 'Headwear'], ['outfit', 'Outfit'], ['colour', 'Colours'], ['about', 'About me']];
@@ -25,11 +24,13 @@
     let tab = 'face';
     const locks = new Set(G.look.locks || []);
     const prev = h('div.cz-preview');
+    const sticky = h('div.cz-sticky', prev);   // keeps your face in view while you scroll the options
     const body = h('div.cz-body');
     const tabs = h('div.cz-tabs');
+    let touched = false;                       // once you pick something yourself, the photo stops guessing
 
     const repaint = () => { prev.textContent = ''; prev.append(LS.portrait.still(work.genome, 170)); const av = LS.platform.player.avatar; if (av) prev.append(h('img.avatar-chip', { src: av, alt: '' })); };
-    const set = (k, v, lock = true) => { work.genome[k] = v; if (lock) locks.add(k); repaint(); };
+    const set = (k, v, lock = true) => { touched = true; work.genome[k] = v; if (lock) locks.add(k); repaint(); };
 
     const chipGrid = (list, current, onPick, thumbKey) => {
       const grid = h('div.thumbs');
@@ -49,6 +50,9 @@
       body.textContent = '';
       const g = work.genome;
       if (tab === 'face') {
+        if (LS.platform.player.avatar) body.append(LS.ui.section('Your Lagos Life photo',
+          h('div.actions', h('button.btn.primary', { type: 'button', onclick: matchAvatar }, 'Make my look from my photo')),
+          h('p.fine', 'We read how you present and your skin and hair colour. Everything below is yours to change.')));
         const lab = id => (PM.get('archetypes', id) || {}).label || id;
         const arch = {}; for (const id of PM.NAIJA_HERITAGES || Object.keys(PM.NAIJA_MIX)) arch[id] = lab(id);
         const more = {}; for (const id of PM.OTHER_AFRICAN || []) more[id] = lab(id);
@@ -75,7 +79,7 @@
         body.append(LS.ui.section('Skin', swatches(SKINS, g.skin, c => set('skin', c))));
         body.append(LS.ui.section('Hair', swatches(HAIRS, g.hairColor, c => set('hairColor', c))));
         body.append(LS.ui.section('Outfit', swatches(CLOTHS, g.cloth1, c => set('cloth1', c)), swatches(CLOTHS, g.cloth2, c => set('cloth2', c)), swatches(CLOTHS, g.cloth3, c => set('cloth3', c))));
-        if (LS.platform.player.avatar) body.append(h('button.btn', { type: 'button', onclick: matchAvatar }, 'Match my Lagos Life avatar'));
+        if (LS.platform.player.avatar) body.append(h('div.actions', h('button.btn', { type: 'button', onclick: matchAvatar }, 'Make my look from my photo')));
       } else if (tab === 'about') {
         const b = work.bio;
         const sel = (label, map, key) => h('label.field', h('span', label), h('select', { onchange: e => { b[key] = e.target.value; } },
@@ -88,16 +92,36 @@
     }
 
     function regen(o) {
+      touched = true;
       const g = work.genome;
       const next = PM.generate({ seed: g.seed, archetype: o.archetype || g.archetype, gender: o.gender || g.gender, base: g, locked: new Set([...locks].filter(k => k !== 'skin' || !o.archetype)) });
       Object.assign(g, next, LS.LOOK);
       if (o.archetype) locks.delete('skin');
       repaint(); drawTab();
     }
+    /** Fold a photo reading into the working look: how they present, then the colours. */
+    function applyLook(r) {
+      let any = false;
+      if (r.gender && LS.sexOf(work.genome) !== r.gender) { work.genome.gender = r.gender; touched = true; regen({ gender: r.gender }); any = true; }
+      if (r.skin) { set('skin', r.skin); any = true; }
+      if (r.hair) { set('hairColor', r.hair); any = true; }
+      if (any) drawTab();
+      return any;
+    }
+
     async function matchAvatar() {
-      const c = await LS.sampleAvatar(LS.platform.player.avatar);
-      if (c && (c.skin || c.hair)) { if (c.skin) set('skin', c.skin); if (c.hair) set('hairColor', c.hair); drawTab(); G.toast('Matched your avatar’s colours.'); }
-      else G.toast('Couldn’t read the avatar colours.');
+      G.toast('Reading your photo…');
+      // reuse the reading boot already started, so the button and the first screen always agree
+      const r = (opts.photo && opts.photo.look) || await LS.avatarLook(LS.platform.player.avatar);
+      if (!r) {
+        // no model or no network: the free on-device colour sniff is still better than nothing
+        const c = await LS.sampleAvatar(LS.platform.player.avatar);
+        if (c && (c.skin || c.hair)) { if (c.skin) set('skin', c.skin); if (c.hair) set('hairColor', c.hair); drawTab(); G.toast('Matched your photo’s colours.'); }
+        else G.toast('We couldn’t read that photo — pick your look below.');
+        return;
+      }
+      applyLook(r);
+      G.toast(r.gender ? `Matched your photo — we guessed ${r.gender === 'masc' ? 'a man' : 'a woman'}. Change anything you like.` : 'Matched your photo’s colours.');
     }
 
     for (const [k, l] of LOOK_TABS) tabs.append(h('button', { type: 'button', 'data-t': k, onclick: e => { tab = k; $('.cz-tabs button.on', tabs) && $('.cz-tabs button.on', tabs).classList.remove('on'); e.currentTarget.classList.add('on'); drawTab(); } }, l));
@@ -108,7 +132,12 @@
       h('button.btn.primary', { type: 'button', onclick: save }, opts.intro ? 'Start my life' : 'Save'));
     const intro = opts.intro ? h('p.lead', 'Who are you in Lagos? Pick a look. You can change it any time from the corner.') : null;
     repaint(); drawTab();
-    LS.sheet.open(opts.intro ? 'Your look' : 'Customise', h('div.cz', intro, prev, tabs, body, actions), { full: true, noClose: !!opts.intro });
+    LS.sheet.open(opts.intro ? 'Your look' : 'Customise', h('div.cz', intro, sticky, tabs, body, actions), { full: true, noClose: !!opts.intro });
+
+    // the photo read started at boot: fold it in when it lands, unless you got there first
+    if (opts.photo && opts.photo.pending) {
+      opts.photo.pending.then(r => { if (r && !touched && applyLook(r)) G.toast('Matched your Lagos Life photo.'); });
+    }
 
     function save() {
       const bio = work.bio; work.genome.gender = LS.sexOf(work.genome); bio.looking = LS.opposite(work.genome);   // straight: you look for the other one

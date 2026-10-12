@@ -7,6 +7,11 @@
   /** How every portrait in the game is painted: true skin tones on warm paper. */
   LS.LOOK = { style: 'natural', background: 'parchment', crumple: 0.5, crumpleAll: 0.16, toneMix: 1 };
 
+  /** The colours a face can be: the swatches the customiser offers, and the only colours we'll accept back
+   *  from the photo reader, so an odd answer can never paint a face a colour the game doesn't use. */
+  LS.SKINS = ['#f1d2b8', '#d4a87f', '#b9875a', '#aa784c', '#916039', '#7f5131', '#69402a', '#573421', '#45291a', '#352015'];
+  LS.HAIRS = ['#151210', '#221b17', '#3a2a1f', '#5c3f2b', '#7a2e1a', '#a8874f', '#9d9a94', '#7a2e7a', '#b3262a', '#3a6ea5', '#1b6b4a', '#d4a017'];
+
   /** Life years → portrait-js's 0..1 Age knob (wrinkles from ~0.55, grey from ~0.6). */
   LS.ageKnob = y => clamp((y - 16) / 62, 0.02, 0.98);
   const hash = s => (window.PM && PM.hashString ? PM.hashString(String(s)) : String(s).split('').reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 7) >>> 0);
@@ -162,6 +167,23 @@
       img.src = dataUrl;
       function add(m, bin, r, g, b) { const e = m.get(bin) || { n: 0, r: 0, g: 0, b: 0 }; e.n++; e.r += r; e.g += g; e.b += b; m.set(bin, e); }
     });
+  };
+
+  /**
+   * Read the Lagos Life photo on our server, once per photo, into { gender, skin, hair } — the default look.
+   * Resolves null when there is no photo, no server, or the photo can't be read, so callers always keep the
+   * free on-device sampleAvatar() result as a floor. Never throws.
+   */
+  LS.avatarLook = async function (dataUrl) {
+    if (!dataUrl || !LS.api) return null;
+    try {
+      const r = await LS.api.post('/avatar-look', {
+        avatar: dataUrl.length <= 60000 ? dataUrl : undefined,
+        skins: LS.SKINS, hairs: LS.HAIRS,
+      });
+      const l = r && r.look;
+      return l && (l.gender || l.skin || l.hair) ? l : null;
+    } catch (e) { return null; }
   };
 
   /** The player's starting genome. `colors` comes from sampleAvatar (optional). */

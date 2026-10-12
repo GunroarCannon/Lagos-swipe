@@ -5,7 +5,7 @@
   'use strict';
   const S = LS.social = {
     buffer: [],            // real players waiting to be drawn into the deck
-    unread: 0, charms: 0, inbox: null, lastNotifAt: 0,
+    unread: 0, charms: 0, bank: 0, inbox: null, lastNotifAt: 0,
     listeners: [],
     onChange(f) { S.listeners.push(f); },
     _emit(kind, data) { S.listeners.forEach(f => { try { f(kind, data); } catch (e) { console.error(e); } }); },
@@ -13,7 +13,7 @@
     async me() {
       try {
         const r = await LS.api.get('/me');
-        S.unread = r.unread || 0; S.charms = r.charms || 0; S.profile = r.profile;
+        S.unread = r.unread || 0; S.charms = r.charms || 0; S.bank = r.bank || 0; S.profile = r.profile;
         S._emit('me', r);
         return r;
       } catch (e) { return null; }
@@ -59,6 +59,32 @@
       const p = await LS.platform.purchase(productId);
       const r = await LS.api.post('/claim', { purchaseId: p.purchaseId, productId });
       S.charms = r.charms; S._emit('me');
+      return r;
+    },
+
+    /** Buy naira with real money: the world's pay sheet, then our server verifies before crediting. */
+    async buyNaira(productId) {
+      const p = await LS.platform.purchase(productId);
+      const r = await LS.api.post('/claim', { purchaseId: p.purchaseId, productId });
+      if (r.bank != null) S.bank = r.bank;
+      S._emit('me');
+      return r;
+    },
+
+    /** What money can buy, priced by the server so the game never invents a price. */
+    async shop() { return LS.api.get('/bank'); },
+
+    /** Turn Wallet stat points into bank naira. */
+    async exchange(points) {
+      const r = await LS.api.post('/exchange', { points });
+      S.bank = r.bank; S._emit('me');
+      return r;
+    },
+
+    /** Spend bank naira on lucky charms. */
+    async buyCharmsWithNaira(n) {
+      const r = await LS.api.post('/charms/buy', { n });
+      S.bank = r.bank; S.charms = r.charms; S._emit('me');
       return r;
     },
 
