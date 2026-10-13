@@ -14,6 +14,14 @@ const genome = (g = 'fem') => ({ seed: 5, archetype: 'yoruba', gender: g, age: 0
 const bio = { job: 'banker', area: 'lekki', vibes: ['suya', 'gym'], looking: 'all', age: 27, love: 'acts', flag: 'late' };
 
 (async () => {
+  // a pasted redis-cli line still finds the REST host (and a normal https address is left alone)
+  const { restUrl } = require('../lib/store');
+  assert.equal(restUrl('https://abc-123.upstash.io/'), 'https://abc-123.upstash.io');
+  assert.equal(restUrl('redis-cli --tls -u redis://default:secret@abc-123.upstash.io:6379'), 'https://abc-123.upstash.io');
+  assert.equal(restUrl('redis://default:secret@abc-123.upstash.io:6379'), 'https://abc-123.upstash.io');
+  assert.equal(restUrl(''), '');
+  assert.equal(restUrl('nonsense'), '');
+
   await new Promise(r => server.listen(0, r));
   base = 'http://127.0.0.1:' + server.address().port;
   const A = dev('amaka001', 'Amaka'), B = dev('tunde002', 'Tunde'), C = dev('chidi003', 'Chidi');

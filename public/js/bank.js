@@ -45,8 +45,9 @@
     box.textContent = '';
     box.append(h('p.muted', 'Loading…'));
 
-    let info = null, failure = null;
-    try { info = await S.shop(); } catch (e) { failure = e; }
+    // The list never waits on this: it only refreshes our numbers, and FALLBACK stands in when it can't.
+    let info = null;
+    try { info = await S.shop(); } catch (e) { console.warn('[shop] price check failed, using the built-in list:', e && (e.code || e.message)); }
     box.textContent = '';
 
     const live = info || FALLBACK;
@@ -63,12 +64,6 @@
     box.append(h('div.stash',
       h('div', h('b', LS.naira(total)), h('small', 'your naira')),
       h('div', h('b', String(G.charmCount())), h('small', G.charmCount() === 1 ? 'lucky charm' : 'lucky charms'))));
-
-    if (!info) {
-      const off = failure && (failure.code === 'offline' || failure.code === 'session');
-      box.append(h('p.muted.center', off ? 'You’re offline, so these prices may be out of date. ' : 'Couldn’t reach the shop just now. ',
-        h('button.linkbtn', { type: 'button', onclick: () => renderShop(box) }, 'Try again')));
-    }
 
     // ---------------------------------------------------------------- lucky charms
     const charmRows = live.charmPacks.map(p =>

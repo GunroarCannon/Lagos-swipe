@@ -243,14 +243,12 @@ try {
   check('the Wallet bar never drops to the edge', wallet1 > 0.5, wallet1.toFixed(1));
   await cdp.shot('4-bank-after-charm');
 
-  // when the server can't be reached the list is still there, with a way to retry
+  // when the price check fails the list is still there, and nothing scary is said about it
   await cdp.eval(`window.__shop = LS.social.shop; LS.social.shop = async () => { throw Object.assign(new Error('boom'), { code: 'error' }); }; LS.showBank()`);
   await sleep(500);
-  check('a failed price load still lists what is for sale', await cdp.eval(`document.querySelectorAll('.bank .pack.real').length >= 4`));
-  check('and says so, with Try again', await cdp.eval(`/Couldn.t reach the shop/.test(document.querySelector('.bank').textContent) && !!document.querySelector('.bank .linkbtn')`));
-  await cdp.eval(`LS.social.shop = window.__shop; document.querySelector('.bank .linkbtn').click()`);
-  await sleep(700);
-  check('Try again clears the message once the server answers', await cdp.eval(`!/Couldn.t reach/.test(document.querySelector('.bank').textContent)`));
+  check('a failed price check still lists what is for sale', await cdp.eval(`document.querySelectorAll('.bank .pack.real').length >= 5`));
+  check('and shows no error banner', await cdp.eval(`!/Couldn.t reach|offline|Try again/i.test(document.querySelector('.bank').textContent)`));
+  await cdp.eval(`LS.social.shop = window.__shop`);
 
   // the hamburger menu sells things directly too
   await cdp.eval(`LS.sheet.close(); LS.showMenu()`);
