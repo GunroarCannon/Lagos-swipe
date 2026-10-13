@@ -110,21 +110,17 @@
     return out.sort((a, b) => Math.abs(b.rel - 50) - Math.abs(a.rel - 50)).slice(0, 3);
   }
 
-  /** Flag a caption that runs past the card, so it gets a soft edge to show there is more to read. */
+  /** Flag a card that runs past the screen: a soft edge says there is more to scroll to, and clears at the end. */
   function markScrollable(el) {
-    const look = () => el.classList.toggle('scrollable', el.scrollHeight - el.clientHeight > 2);
-    setTimeout(look, 60);
-    if (!markScrollable.bound) {
-      markScrollable.bound = true;
-      window.addEventListener('resize', () => { const t = $('.card-text'); if (t) t.classList.toggle('scrollable', t.scrollHeight - t.clientHeight > 2); });
-    }
+    el.onscroll = () => el.classList.toggle('scrollable', el.scrollHeight - el.clientHeight - el.scrollTop > 6);
+    setTimeout(el.onscroll, 60);
   }
 
   G.showCard = function (card) {
     const s = G.s, el = $('#card');
     if (G.handle) { G.handle.destroy(); G.handle = null; }
     G.card = card;
-    el.textContent = ''; el.className = 'card kind-' + card.kind + (card.lose ? ' lose' : '') + (card.kind === 'real' ? ' is-real' : '');
+    el.scrollTop = 0; el.textContent = ''; el.className = 'card kind-' + card.kind + (card.lose ? ' lose' : '') + (card.kind === 'real' ? ' is-real' : '');
     resetCard(el);
 
     const g = genomeFor(card);
@@ -161,7 +157,7 @@
       const pk = card.pkey, mems = pk ? E.memories(s, pk) : [];
       if (mems.length && card.kind !== 'meet') text.append(h('p.recall', '“' + mems[0].t + '”'));
       el.append(text);
-      markScrollable(text);
+      markScrollable(el);
     }
     el.append(h('div.stamp.sl', { html: '' }), h('div.stamp.sr'));
     $('.stamp.sl', el).textContent = card.L.t; $('.stamp.sr', el).textContent = card.R.t;

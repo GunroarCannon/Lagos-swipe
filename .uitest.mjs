@@ -207,25 +207,28 @@ try {
 
   await cdp.eval(`LS.showBank()`);
   await sleep(900);
-  check('the bank sheet opened', await cdp.eval(`!document.getElementById('sheet').hidden && !!document.querySelector('.bank')`));
-  check('it shows a balance from the server', await cdp.eval(`/₦/.test(document.querySelector('.bank-sum')?.textContent || '')`),
-    await cdp.eval(`document.querySelector('.bank-sum')?.textContent`));
+  check('the shop sheet opened', await cdp.eval(`!document.getElementById('sheet').hidden && !!document.querySelector('.bank')`));
+  check('it shows what you have: naira and charms', await cdp.eval(`/₦/.test(document.querySelector('.stash b')?.textContent || '') && document.querySelectorAll('.stash b').length === 2`),
+    await cdp.eval(`document.querySelector('.stash')?.textContent`));
   const sectionNames = await cdp.eval(`[...document.querySelectorAll('.bank h3')].map(h => h.textContent)`);
-  check('it offers both ways to buy and a way to spend', sectionNames.length >= 3, sectionNames.join(' | '));
-  check('real-money packs are listed with prices',
-    await cdp.eval(`[...document.querySelectorAll('.bank .pack')].length >= 2 && /₦200/.test(document.querySelector('.bank .pack')?.textContent || '')`));
+  check('it has exactly two things to buy, said plainly', sectionNames.join('|') === 'Lucky charms|In-game naira', sectionNames.join(' | '));
+  check('charms can be bought with real money', await cdp.eval(`[...document.querySelectorAll('.bank .pack.real')].some(b => /lucky charms/.test(b.textContent) && /Pay ₦100/.test(b.textContent))`));
+  check('naira can be bought with real money', await cdp.eval(`[...document.querySelectorAll('.bank .pack.real')].some(b => /in-game naira/.test(b.textContent) && /Pay ₦200/.test(b.textContent))`));
+  check('the Wallet exchange is tucked away', await cdp.eval(`!!document.querySelector('.bank details.earn') && !document.querySelector('.bank details.earn').open`));
   await cdp.shot('3-bank');
 
   // exchange Wallet points for naira through the button, like a player would
   const wallet0 = await cdp.eval(`LS.Game.s.stats.wallet`);
   const exRes = await cdp.eval(`(async () => {
-    const btn = [...document.querySelectorAll('.bank button')].find(b => /Put it in the bank/i.test(b.textContent));
+    const sum = document.querySelector('.bank details.earn summary');
+    if (sum) sum.click();
+    const btn = [...document.querySelectorAll('.bank button')].find(b => /Turn it into naira/i.test(b.textContent));
     if (!btn) return { error: 'no exchange button' };
     btn.click();
     for (let i = 0; i < 40; i++) {
       await new Promise(r => setTimeout(r, 250));
       const t = document.getElementById('toast').textContent || '';
-      if (/in the bank|offline|today|Not enough/i.test(t)) return { toast: t, bank: document.querySelector('.bank-sum')?.textContent };
+      if (/added|offline|today|Not enough/i.test(t)) return { toast: t, bank: document.querySelector('.stash b')?.textContent };
     }
     return { error: 'no toast' };
   })()`);
@@ -237,8 +240,8 @@ try {
   // spend naira on a charm
   const spent = await cdp.eval(`(async () => {
     const before = LS.social.bank;
-    const btn = [...document.querySelectorAll('.bank button')].find(b => /Buy charms/i.test(b.textContent));
-    if (!btn) return { error: 'no spend button' };
+    const btn = [...document.querySelectorAll('.bank .pack:not(.real)')].find(b => /^1 lucky charm/.test(b.textContent));
+    if (!btn || btn.disabled) return { error: 'no spend button', disabled: !!btn };
     btn.click();
     for (let i = 0; i < 40; i++) {
       await new Promise(r => setTimeout(r, 250));
@@ -261,27 +264,25 @@ try {
   })()`);
   await sleep(400);
   const box = await cdp.eval(`(() => {
-    const t = document.querySelector('.card-text'), p = document.querySelector('.picture');
-    const cr = document.getElementById('card').getBoundingClientRect();
+    const c = document.getElementById('card'), p = document.querySelector('.picture'), t = document.querySelector('.card-text');
     const r = t.getBoundingClientRect();
-    return { exists: !!t, scrollH: t.scrollHeight, clientH: t.clientHeight, top: Math.round(r.top), bottom: Math.round(r.bottom),
-             cardBottom: Math.round(cr.bottom), picH: Math.round(p.getBoundingClientRect().height),
-             overflowY: getComputedStyle(t).overflowY, touchAction: getComputedStyle(t).touchAction,
-             flagged: t.classList.contains('scrollable'), x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+    return { scrollH: c.scrollHeight, clientH: c.clientHeight, picH: Math.round(p.getBoundingClientRect().height),
+             overflowY: getComputedStyle(c).overflowY, touchAction: getComputedStyle(c).touchAction,
+             flagged: c.classList.contains('scrollable'), x: Math.round(r.left + r.width / 2), y: Math.round(Math.min(r.top + 40, c.getBoundingClientRect().bottom - 20)) };
   })()`);
-  check('the caption lives in its own box', box.exists);
-  check('a long caption overflows that box (so it needs to scroll)', box.scrollH > box.clientH + 2, `${box.clientH}px visible of ${box.scrollH}px`);
-  check('it is set up to scroll', box.overflowY === 'auto' && box.touchAction === 'pan-y', `${box.overflowY} / ${box.touchAction}`);
-  check('the box is marked so it gets a soft edge', box.flagged);
-  check('the box stays inside the card', box.bottom <= box.cardBottom + 1, `text bottom ${box.bottom} vs card ${box.cardBottom}`);
-  check('the portrait is not crushed away', box.picH >= 64, box.picH + 'px');
+  check('a long story overflows the card (so it needs to scroll)', box.scrollH > box.clientH + 2, `${box.clientH}px visible of ${box.scrollH}px`);
+  check('the whole card is set up to scroll', box.overflowY === 'auto' && box.touchAction === 'pan-y', `${box.overflowY} / ${box.touchAction}`);
+  check('the card is marked so it gets a soft edge', box.flagged);
+  check('the portrait is not crushed away', box.picH >= 110, box.picH + 'px');
   await cdp.shot('5-long-card');
 
-  // a real touch drag down the words must scroll them
-  await cdp.send('Input.synthesizeScrollGesture', { x: box.x, y: box.y, xDistance: 0, yDistance: -160, gestureSourceType: 'touch', speed: 400 });
+  // a real touch drag up the card must scroll it
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: box.x, y: box.y }] });
+  for (let i = 1; i <= 8; i++) { await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: box.x, y: box.y - i * 15 }] }); await sleep(30); }
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   await sleep(600);
-  const scrolled = await cdp.eval(`document.querySelector('.card-text').scrollTop`);
-  check('a vertical touch scrolls the caption', scrolled > 0, `scrollTop=${Math.round(scrolled)}`);
+  const scrolled = await cdp.eval(`document.getElementById('card').scrollTop`);
+  check('a vertical touch scrolls the card', scrolled > 0, `scrollTop=${Math.round(scrolled)}`);
   await cdp.shot('6-long-card-scrolled');
 
   // ...and a horizontal drag must still throw the card, not scroll it

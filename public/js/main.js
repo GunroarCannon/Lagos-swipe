@@ -53,7 +53,7 @@
     $('#btn-life').onclick = () => LS.showLife();
     $('#btn-inbox').onclick = () => LS.showInbox();
     $('#btn-menu').onclick = () => LS.showMenu();
-    $('#hud-money').onclick = () => LS.showBank({ buy: true });
+    $('#hud-money').onclick = () => LS.showBank();
     LS.platform.onPurchase(p => LS.social.claim(p).then(() => { LS.Game.toast('Your purchase came through.'); LS.Game.updateHud(); }).catch(e => console.warn('[claim]', e.code || e.message)));
     $('#me-corner').onclick = () => LS.customize({ intro: false });
     LS.social.onChange((kind, data) => { if (kind === 'news') LS.Game.toast('New in your inbox ✉'); LS.Game.updateHud && LS.Game.s && LS.Game.updateHud(); });

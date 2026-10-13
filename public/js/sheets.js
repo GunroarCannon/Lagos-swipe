@@ -142,20 +142,14 @@
     const online = LS.api.online;
     const body = h('div.menu',
       section('Sound', sound),
-      section('Lucky charms', h('p.muted', `A lucky charm pulls you back once when a bar hits the edge. You have ${G.charmCount()}.`),
-        h('button.btn.primary', { type: 'button', onclick: buy }, 'Get 3 for ₦100')),
-      section('Bank', h('p.muted', `You have ${LS.naira(LS.social.bank)} of in-game naira. Buy more out of your Wallet stat, or with real money, and spend it on lucky charms.`),
-        h('button.btn', { type: 'button', onclick: () => { Sheet.close(); LS.showBank(); } }, 'Open the bank')),
+      section('Shop', h('p.muted', `Buy lucky charms and naira. You have ${LS.naira(LS.social.bank)} in-game naira and ${G.charmCount()} lucky ${G.charmCount() === 1 ? 'charm' : 'charms'}.`),
+        h('button.btn.primary', { type: 'button', onclick: () => { Sheet.close(); LS.showBank(); } }, 'Open the shop')),
       section('Play', h('div.actions', h('button.btn', { type: 'button', onclick: () => LS.showPeople() }, 'People & stories'), h('button.btn', { type: 'button', onclick: () => LS.showBoard() }, 'Leaderboard'),
         h('button.btn', { type: 'button', onclick: () => { if (confirm('Start a new life? This one ends here.')) { Sheet.close(); G.restart(); } } }, 'New life'))),
       section('About', h('p.muted', 'Lagos Swipe is a life sim. Decide with a swipe or a tap on a postcard. Keep Wallet, Heart, Hustle and Peace off the ends, look after the people who matter, and reach 35.'),
         h('p.muted', online ? 'Online: other real players can turn up in your day.' : 'Offline: playing with the Lagos crowd only.'),
         h('p.fine', 'Portraits by portrait-js.')));
     Sheet.open('Menu', body);
-    async function buy() {
-      try { const r = await LS.social.buyCharms('lucky_charms_5'); G.toast(`Lucky charms: ${G.charmCount()}`); G.updateHud(); Sheet.close(); }
-      catch (e) { G.toast(e && e.code === 'cancelled' ? 'No worries.' : 'Couldn’t complete the purchase.'); }
-    }
   };
 
   // ------------------------------------------------------------------ leaderboard

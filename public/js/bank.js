@@ -1,6 +1,7 @@
-/* The bank: a spendable in-game naira balance, bought two ways — out of your own Wallet stat, or with real
- * money through the world's pay sheet — and spent on lucky charms. Every price shown here comes from the
- * server (LS.social.shop), so the game never invents one.
+/* The shop: what the naira balance in the HUD opens. Two things to buy, each said plainly:
+ *   Lucky charms — with real money (Lagos Life's pay sheet) or with in-game naira from the bank.
+ *   Naira        — in-game money, with real money, or earned by turning over your Wallet stat.
+ * Every price comes from the server (LS.social.shop), so the game never invents one.
  *
  * Turning Wallet points over spends the stat itself, which is what ends runs at the low edge, so we always
  * leave a working margin behind and never let the exchange be the thing that kills you. */
@@ -14,17 +15,22 @@
   const reason = e => {
     const c = e && e.code;
     return c === 'daily_limit' ? 'That’s all the Wallet points you can turn over today.'
-      : c === 'no_naira' ? 'Not enough in the bank for that.'
+      : c === 'no_naira' ? 'Not enough in-game naira for that.'
       : c === 'cancelled' ? 'No worries.'
-      : c === 'offline' || c === 'session' ? 'You’re offline — the bank needs a connection.'
+      : c === 'offline' || c === 'session' ? 'You’re offline — the shop needs a connection.'
       : (e && e.message) || 'That didn’t go through.';
   };
 
-  /** opts.buy: opened from the naira balance, so the real-money packs come first. */
-  LS.showBank = async function (opts = {}) {
+  /** One thing you can buy: what you get on the left, one button with the price on the right. */
+  const offer = (title, note, price, onclick, { off, real } = {}) =>
+    h('button.item.pack' + (real ? '.real' : ''), { type: 'button', disabled: !!off, onclick },
+      h('div.item-text', h('b', title), h('small', note)),
+      h('b.price', price));
+
+  LS.showBank = async function () {
     const G = LS.Game, S = LS.social;
     const body = h('div.bank', h('p.muted', 'Loading…'));
-    LS.sheet.open(opts.buy ? 'Buy naira' : 'Bank', body);
+    LS.sheet.open('Shop', body);
 
     let info = null;
     try { info = await S.shop(); } catch (e) { /* offline: the cached numbers below still show */ }
@@ -33,62 +39,64 @@
     const bank = info ? info.bank : S.bank;
     const charmNgn = (info && info.charmNgn) || 10000;
     const rate = (info && info.rate) || 3500;
+    const packs = (info && info.packs) || [];
+    const charmPacks = (info && info.charmPacks) || [];
 
-    body.append(h('div.bank-head',
-      h('b.bank-sum', LS.naira(bank)),
-      h('small', 'in the bank')));
+    // ---------------------------------------------------------------- what you have
+    body.append(h('div.stash',
+      h('div', h('b', LS.naira(bank)), h('small', 'in-game naira')),
+      h('div', h('b', String(G.charmCount())), h('small', 'lucky charms'))));
 
-    // ---------------------------------------------------------------- earn it from the Wallet stat
+    if (!info) body.append(h('p.muted.center', 'Prices load when you’re online.'));
+
+    // ---------------------------------------------------------------- lucky charms
+    const charmRows = [];
+    for (const p of charmPacks) {
+      charmRows.push(offer(p.name, 'Pay with real money', `Pay ₦${p.naira.toLocaleString('en-NG')}`, () => buyPack(p, 'charm'), { real: true }));
+    }
+    if (info) {
+      for (const n of [1, 5]) {
+        const cost = n * charmNgn, short = cost - bank;
+        charmRows.push(offer(n === 1 ? '1 lucky charm' : `${n} lucky charms`,
+          short > 0 ? `Need ${LS.naira(short)} more in-game naira` : 'Pay with in-game naira',
+          LS.naira(cost), () => spend(n), { off: short > 0 }));
+      }
+    }
+    if (charmRows.length) {
+      body.append(LS.ui.section('Lucky charms',
+        h('p.muted', 'A lucky charm pulls you back once when a bar hits the edge.'),
+        h('div.list', charmRows)));
+    }
+
+    // ---------------------------------------------------------------- naira
+    if (packs.length) {
+      body.append(LS.ui.section('In-game naira',
+        h('p.muted', 'Spend it on lucky charms. It isn’t real money and can’t be cashed out.'),
+        h('div.list', packs.map(p => offer(`${LS.naira(p.bank)} in-game naira`, 'Pay with real money', `Pay ₦${p.naira.toLocaleString('en-NG')}`, () => buyPack(p, 'naira'), { real: true })))));
+    }
+
+    // ---------------------------------------------------------------- or earn it from the Wallet stat
     const wallet = G.s ? G.s.stats.wallet : null;
     const room = wallet == null ? 0 : Math.floor(wallet - KEEP);
     const max = Math.min((info && info.exchangeMax) || 40, room);
-
+    let earn;
     if (wallet == null) {
-      body.append(LS.ui.section('Turn Wallet money into naira', h('p.muted', 'Start a life first — the bank trades in your Wallet stat.')));
+      earn = h('p.muted', 'Start a life first — this trades in your Wallet stat.');
     } else if (max < 1) {
-      body.append(LS.ui.section('Turn Wallet money into naira',
-        h('p.muted', `Your Wallet is at ${Math.round(wallet)}. Keep it above ${KEEP} or the run ends, so there’s nothing to spare yet.`)));
+      earn = h('p.muted', `Your Wallet is at ${Math.round(wallet)}. Keep it above ${KEEP} or the run ends, so there’s nothing to spare yet.`);
     } else {
       let points = Math.min(max, 10);
       const out = h('b', '');
       const paint = () => { out.textContent = LS.naira(points * rate); };
       const range = h('input', { type: 'range', min: 1, max, step: 1, value: points, oninput: e => { points = +e.target.value; paint(); } });
       paint();
-      body.append(LS.ui.section('Turn Wallet money into naira',
+      earn = h('div',
         h('label.slider', h('span', `${rate.toLocaleString('en-NG')} a point`), range),
-        h('p.muted', points === 1 ? '1 Wallet point' : `${points} Wallet points`, ' → ', out,
-          ` · your Wallet drops to ${Math.round(wallet - points)}`),
-        h('div.actions', h('button.btn.primary', { type: 'button', onclick: () => exchange(points) }, 'Put it in the bank')),
-        h('p.fine', info
-          ? `You’ve turned over ${info.exchangedToday} of ${info.exchangeDay} Wallet points today.`
-          : 'Your Wallet stat becomes in-game naira at the same rate the HUD already shows.')));
+        h('p.muted', points === 1 ? '1 Wallet point' : `${points} Wallet points`, ' → ', out, ` · your Wallet drops to ${Math.round(wallet - points)}`),
+        h('div.actions', h('button.btn.primary', { type: 'button', onclick: () => exchange(points) }, 'Turn it into naira')),
+        h('p.fine', info ? `You’ve turned over ${info.exchangedToday} of ${info.exchangeDay} Wallet points today.` : ''));
     }
-
-    // ---------------------------------------------------------------- or buy it with real money
-    const packs = (info && info.packs) || [];
-    let packsEl = null;
-    if (packs.length) {
-      body.append(packsEl = LS.ui.section(opts.buy ? 'Buy naira with real money' : 'Or buy naira with real money',
-        h('div.list', packs.map(p => h('button.item.pack', { type: 'button', onclick: () => buy(p) },
-          h('div.item-text', h("b", p.name), h('small', `Pay ₦${p.naira.toLocaleString('en-NG')}`)),
-          h('b.pts', `₦${p.naira.toLocaleString('en-NG')}`)))),
-        h('p.fine', 'Paid through Lagos Life’s own pay sheet. Your card never touches the game.')));
-    }
-
-    // ---------------------------------------------------------------- spend it
-    let n = 1;
-    const cost = h('b', '');
-    const paintCost = () => { cost.textContent = LS.naira(n * charmNgn); };
-    const nRange = h('input', { type: 'range', min: 1, max: 10, step: 1, value: 1, oninput: e => { n = +e.target.value; paintCost(); } });
-    paintCost();
-    body.append(LS.ui.section('Spend it on lucky charms',
-      h('label.slider', h('span', `${LS.naira(charmNgn)} each`), nRange),
-      h('p.muted', n === 1 ? '1 lucky charm for ' : `${n} lucky charms for `, cost, ` · you have ${G.charmCount()}`),
-      h('div.actions', h('button.btn', { type: 'button', onclick: () => spend(n) }, 'Buy charms'))));
-
-    body.append(h('p.fine', 'In-game naira is not real money and can’t be cashed out.'));
-    // opened to buy: the packs sit right under the balance, not below the Wallet exchange
-    if (opts.buy && packsEl) body.querySelector('.bank-head').after(packsEl);
+    body.append(h('details.earn', h('summary', 'Or get naira free from your Wallet'), earn));
 
     // ---------------------------------------------------------------- actions
     async function exchange(points) {
@@ -96,16 +104,17 @@
         await S.exchange(points);
         G.s.stats.wallet = Math.max(0, G.s.stats.wallet - points);
         G.updateHud(); G.save();
-        G.toast(`${LS.naira(points * rate)} in the bank.`);
-        LS.showBank(opts);
+        G.toast(`${LS.naira(points * rate)} added.`);
+        LS.showBank();
       } catch (e) { G.toast(reason(e)); }
     }
 
-    async function buy(p) {
+    async function buyPack(p, what) {
       try {
-        const r = await S.buyNaira(p.id);
-        G.toast(`${LS.naira(r.bank)} in the bank.`);
-        LS.showBank(opts);
+        const r = what === 'charm' ? await S.buyCharms(p.id) : await S.buyNaira(p.id);
+        G.toast(what === 'charm' ? `Lucky charms: ${G.charmCount()}` : `${LS.naira(r.bank)} in-game naira.`);
+        G.updateHud();
+        LS.showBank();
       } catch (e) { G.toast(reason(e)); }
     }
 
@@ -114,7 +123,7 @@
         await S.buyCharmsWithNaira(count);
         G.toast(`Lucky charms: ${G.charmCount()}`);
         G.updateHud();
-        LS.showBank(opts);
+        LS.showBank();
       } catch (e) { G.toast(reason(e)); }
     }
   };

@@ -5,7 +5,7 @@
   "description": "Lagos Swipe: a Reigns-style dating sim for Lagos Life, with async multiplayer.",
   "scripts": {
     "start": "node server.js",
-    "test": "node test/api.test.js && node test/engine.test.js"
+    "test": "node test/api.test.js && node test/vatar.test.js && node test/engine.test.js"
   },
   "engines": { "node": ">=18" }
 }
