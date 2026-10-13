@@ -6,3 +6,6 @@ node_modules/
 
 .vercel
 .env*
+
+# store listing assets (description, screenshots, icon)
+launch/

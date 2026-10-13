@@ -7,8 +7,13 @@
 
   const START_AGE = 23, END_AGE = 35;
   E.START_AGE = START_AGE; E.END_AGE = END_AGE;
-  /** Difficulty knobs. fx scales every choice; edge is the "too much of a good thing" drift above 85. */
-  const T = E.TUNE = { fx: 1.15, rent: 1.0, edge: 0.45, edgeAt: 76 };
+  /** Naira on the Wallet bar: one bar point is worth this much. The HUD number, the shop and the server all use it. */
+  const BAR_NAIRA = E.BAR_NAIRA = 3500;
+  /** Naira on a card: a "wallet: -8" on a choice costs 8 x this, exactly, and the card text says so. */
+  const CARD_NAIRA = E.CARD_NAIRA = 4000;
+  /** Difficulty knobs. fx scales every choice; edge is the "too much of a good thing" drift above 85.
+   *  wallet is the same job as fx, for the Wallet bar only, worked out so a card point is a round ₦4,000 (was 1.15 x 3500 = ₦4,025). */
+  const T = E.TUNE = { fx: 1.15, wallet: CARD_NAIRA / BAR_NAIRA, rent: 1.0, edge: 0.45, edgeAt: 76 };
 
   // ------------------------------------------------------------------ state
   E.newRun = function (name, gender) {
@@ -159,10 +164,14 @@
     const out = {};
     for (const [k, v] of Object.entries(fx || {})) {
       if (!(k in s.stats) || !v) continue;
-      const before = s.stats[k]; s.stats[k] = clamp(before + v * scale, 0, 100); out[k] = s.stats[k] - before;
+      const before = s.stats[k]; s.stats[k] = clamp(before + v * (scale === T.fx && k === 'wallet' ? T.wallet : scale), 0, 100); out[k] = s.stats[k] - before;
     }
     return out;
   }
+  /** How much a choice moves a bar, in bar points (what the HUD preview draws). */
+  E.fxScale = k => (k === 'wallet' ? T.wallet : T.fx);
+  /** What an option does to the player's money, in naira (negative = it costs you). 0 when it doesn't touch Wallet. */
+  E.cashOf = opt => Math.round(((opt && opt.fx && opt.fx.wallet) || 0) * CARD_NAIRA);
 
   /** Change how someone feels about you and what they remember. o: { rel, mem: [tag, text], forget: tag } */
   function touch(s, pk, o) {
@@ -251,7 +260,8 @@
     } else if (card.kind === 'arc') arcResult(s, card, opt, res, merge);
     else if (card.kind === 'cheat') cheatResult(s, side, res, merge);
 
-    merge(tick(s, card.time));
+    res.tick = tick(s, card.time);     // the month passing: pay in, rent and food out. Kept apart so the HUD can say so.
+    merge(res.tick);
     res.ended = checkEnd(s);
     if (res.ended) s.over = res.ended;
     return res;
@@ -386,7 +396,7 @@
       baller: { mood: 'smug', text: 'They order three bottles and “forget” their card at home. The bill arrives.', L: o('Split the bill', { wallet: -7, hustle: 2 }, { aff: -1, ic: 'cash' }), R: o('Cover it all', { wallet: -18, hustle: 6, heart: 3 }, { aff: 2, ic: 'cash' }) },
       broke: { mood: 'embarrassed', text: 'Their card declines. They look mortified.', L: o('Pay quietly', { wallet: -8, heart: 4 }, { aff: 2, ic: 'cash', rel: 6, mem: ['paid', 'You paid the bill without making it awkward.'] }), R: o('Make a joke of it', { heart: -2, hustle: 2 }, { aff: -2, ic: 'party', rel: -8, mem: ['joked', 'You laughed when their card declined.'] }) },
       catfish: { mood: 'surprised', text: 'Wait. That’s not who was in the photos…', L: o('Walk out', { peace: 5, heart: -2 }, { end: true, ic: 'no', r: 'You leave before the food arrives.' }), R: o('Stay and chat', { heart: 4, peace: -2 }, { aff: 1, ic: 'chat' }) },
-      scammer: { mood: 'smug', text: '“Dear, my account is frozen. Just ₦50,000 to unlock my inheritance. I’ll pay you back triple.”', L: o('Block them', { peace: 6, hustle: 2 }, { end: true, ic: 'no', r: 'Blocked, reported, wiser.' }), R: o('Send the money', { wallet: -30, heart: -14, peace: -6 }, { end: true, ic: 'cash', set: { scammed: true }, r: 'The account is deleted within the hour.' }) },
+      scammer: { mood: 'smug', text: '“Dear, my account is frozen. Just ₦120,000 to unlock my inheritance. I’ll pay you back triple.”', L: o('Block them', { peace: 6, hustle: 2 }, { end: true, ic: 'no', r: 'Blocked, reported, wiser.' }), R: o('Send the money', { wallet: -30, heart: -14, peace: -6 }, { end: true, ic: 'cash', set: { scammed: true }, r: 'The account is deleted within the hour.' }) },
       clingy: { mood: 'embarrassed', text: 'Forty-two missed calls. You were at a funeral.', L: o('Set a boundary', { peace: 6, heart: -2 }, { aff: -1, ic: 'no' }), R: o('Indulge them', { peace: -8, heart: 5 }, { aff: 1, ic: 'phone' }) },
       flaky: { mood: 'sleepy', text: 'They cancel the third time. Then show up an hour late with a story.', L: o('Give up', { peace: 3, heart: -3 }, { end: true, ic: 'no' }), R: o('One more chance', { peace: -3, heart: 2 }, { aff: 1, ic: 'heart' }) },
       real: { mood: 'happy', text: `${n} is up for a proper hangout.`, L: o('Maybe later', {}, { end: true, ic: 'bed' }), R: o('Plan it', { heart: 4 }, { aff: 2, ic: 'party' }) },
@@ -456,7 +466,10 @@
   E.life = s => ({ job: LS.JOBS[s.job].id, home: LS.HOMES[s.home].id, status: s.status, age: s.age, friends: s.friends });
 
   E.stat = (s, k) => Math.round(s.stats[k]);
-  /** The one number the player sees as their money: the Wallet bar plus any naira bought with real money. */
-  E.moneyText = (s, bought = 0) => LS.naira(s.stats.wallet * 3500 + (bought || 0));
+  /** The one number the player sees as their cash: the Wallet bar plus any cash bought with real money, to the nearest ₦100. */
+  E.cash = (s, bought = 0) => Math.round((s.stats.wallet * BAR_NAIRA + (bought || 0)) / 100) * 100;
+  E.moneyText = (s, bought = 0) => LS.naira(E.cash(s, bought));
+  /** Pay and costs of a month in naira, from the job and home ladders (the same sums tick() does). */
+  E.monthly = s => { const J = LS.JOBS[s.job], H = LS.HOMES[s.home]; return { pay: Math.round(J.income * BAR_NAIRA), costs: Math.round((H.rent * T.rent + H.living) * BAR_NAIRA) }; };
   E.isDanger = (s, k) => s.stats[k] < 22 || s.stats[k] > 80;
 })(window.LS = window.LS || {});

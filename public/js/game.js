@@ -56,11 +56,23 @@
     }
   };
 
+  /** Say in naira what a choice did to the cash at the top, and (apart from it) what the month's pay and bills did. */
+  let moneyT = 0;
+  G.flashMoney = function (res) {
+    const box = $('#money-flash'); if (!box || !res) return;
+    const total = (res.deltas.wallet || 0) * E.BAR_NAIRA, tick = ((res.tick && res.tick.wallet) || 0) * E.BAR_NAIRA, choice = total - tick;
+    const say = n => (n > 0 ? '+' : '−') + LS.naira(Math.abs(Math.round(n / 500) * 500));
+    box.textContent = '';
+    if (Math.abs(choice) >= 500) { const b = document.createElement('b'); b.className = choice > 0 ? 'up' : 'down'; b.textContent = say(choice); box.append(b); }
+    if (Math.abs(tick) >= 500) { const t = document.createElement('small'); t.className = tick > 0 ? 'up' : 'down'; t.textContent = (tick > 0 ? 'Pay day ' : 'Rent and food ') + say(tick); box.append(t); }
+    clearTimeout(moneyT); moneyT = setTimeout(() => { box.textContent = ''; }, 2600);
+  };
+
   /** Show what an option would do: the level ghosts to where it would end up, with an arrow (bigger = more). */
   function previewDots(opt) {
     for (const k of LS.STAT_KEYS) {
       const el = $(`.bar[data-stat="${k}"]`), arrow = $('.arrow', el);
-      const d = opt ? ((opt.fx || {})[k] || 0) * E.TUNE.fx : 0;
+      const d = opt ? ((opt.fx || {})[k] || 0) * E.fxScale(k) : 0;
       const cur = clamp(G.s ? G.s.stats[k] : 50, 0, 100), to = clamp(cur + d, 0, 100);
       el.style.setProperty('--pv', to.toFixed(1));
       el.classList.toggle('gain', d > 0.4); el.classList.toggle('loss', d < -0.4);
@@ -170,6 +182,7 @@
     clearTimeout(G._dealT); G._dealT = setTimeout(() => { if (G.card === card) G.busy = false; }, 280);
 
     // they speak the first sentence, if talk sound is on
+    if (LS.tutorial) LS.tutorial.onCard(card);
     if (G.handle && card.kind !== 'ending' && LS.sound.enabled && LS.sound.unlocked && LS.sound.talk) {
       const line = String(card.text).replace(/^[^“"]*[“"]/, '').replace(/^[A-Za-z. ]+:\s*/, '').split(/(?<=[.!?…”])\s/)[0].slice(0, 90);
       setTimeout(() => { if (G.card === card) G.handle.say(line); }, 420);
@@ -183,6 +196,10 @@
       if (card.kind === 'ending' && side === 'R' && card.lose && G.charmCount() > 0) { label = `Lucky Charm (${G.charmCount()})`; art = 'charm'; }
       $('.pc-art', pc).innerHTML = LS.artSVG(art);
       $('.pc-lbl', pc).textContent = label;
+      // what this choice does to your cash, so nobody has to guess what a Wallet "-8" is
+      const m = card.kind === 'ending' ? 0 : E.cashOf(opt), chip = $('.pc-money', pc);
+      chip.textContent = m ? (m > 0 ? '+' : '−') + LS.naira(Math.abs(m)) : '';
+      chip.className = 'pc-money' + (m > 0 ? ' up' : m < 0 ? ' down' : '');
       pc.classList.remove('lift', 'dim');
     }
     const box = $('#postcards'); box.classList.remove('swap'); void box.offsetWidth; box.classList.add('swap');
@@ -326,6 +343,7 @@
       return G.restart();
     }
 
+    if (LS.tutorial) LS.tutorial.onChoose();
     // a tap or key press "throws" from the centre with a little lean first
     if (o.tap) { P.x = 0; P.y = 0; }
     LS.sound.play('snap', { vol: 0.55, rate: side === 'R' ? 1.05 : 0.95 }); LS.sound.buzz(10);
@@ -340,6 +358,7 @@
 
     const res = E.choose(s, card, side, { matched });
     G.flashDeltas(res.deltas);
+    G.flashMoney(res);
     if (res.note) G.toast(res.note);
     if (res.match && card.kind === 'real') LS.sound.unlocked && LS.social.loadInbox();
     G.updateHud(); G.save(); G.syncSoon();
@@ -430,5 +449,6 @@
     G.s.g = LS.sexOf(look.genome);
     G.buildHud(); G.bindSwipe(); G.refreshMe(); G.updateHud();
     G.next();
+    if (LS.tutorial && LS.tutorial.due()) LS.tutorial.start();
   };
 })(window.LS = window.LS || {});

@@ -16,7 +16,7 @@
   // ------------------------------------------------------------------ life ladders (the Sims-lite part)
   LS.JOBS = [
     { id: 'jobless', title: 'Between things', income: 0, blurb: 'Sending CVs and eating Mama’s jollof.' },
-    { id: 'corper', title: 'Corper (NYSC)', income: 2, blurb: 'Allowee ₦77,000 and a khaki jacket.' },
+    { id: 'corper', title: 'Corper (NYSC)', income: 2, blurb: 'A small allowee and a khaki jacket.' },
     { id: 'junior', title: 'Junior associate', income: 3, blurb: 'Entry level, big dreams, small salary.' },
     { id: 'mid', title: 'Team lead', income: 4.5, blurb: 'People ask you for approvals now.' },
     { id: 'senior', title: 'Senior manager', income: 6, blurb: 'Fancy title, longer meetings.' },

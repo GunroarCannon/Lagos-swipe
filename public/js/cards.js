@@ -59,7 +59,7 @@
     ['Ignore it', { peace: -9, heart: -2 }, { r: 'Mama will remember this.', rel: -8, mem: ['ignored', 'You ignored her call.'], push: [{ id: 'mama_guilt', after: 3 }] }], ['Pick up', { peace: 5, heart: 4, hustle: -3 }, { r: 'Twenty minutes later, you know everyone’s business.', rel: 5, forget: 'ignored' }], { dom: 'family', w: 1.3 });
   C('mama_food', 'mama', 'happy', '“I made egusi and pounded yam. Come and eat, you’re getting thin.”',
     ['Too busy', { peace: -5, heart: -3, wallet: 2 }], ['Go home', { peace: 9, heart: 5, wallet: 2, hustle: -4 }], { dom: 'family' });
-  C('mama_money', 'mama', 'sad', '“Your Uncle Segun needs ₦40,000 for school fees. Just small.”',
+  C('mama_money', 'mama', 'sad', '“Your Uncle Segun needs ₦48,000 for school fees. Just small.”',
     ['I can’t', { peace: -7, heart: -3 }, { rel: -7, mem: ['refused', 'You said no when family needed money.'] }], ['Send it', { wallet: -12, peace: 6, heart: 3 }, { rel: 8, mem: ['helped', 'You sent money home when it mattered.'] }], { dom: 'family', when: s => s.stats.wallet > 25 });
   C('mama_church', 'mama', 'determined', '“Service is at nine. Wear the blue one. And greet Pastor properly.”',
     ['Sleep in', { peace: -6, hustle: -1, heart: -2 }], ['Show up', { peace: 7, heart: 3, hustle: 2 }], { dom: 'family', w: 0.8 });
@@ -70,7 +70,7 @@
   C('village', 'mama', 'happy', '“December. Village. No excuses.”',
     ['Stay in Lagos', { peace: -8, heart: -4, hustle: 4 }], ['Travel home', { wallet: -10, peace: 10, heart: 6, hustle: -5 }], { dom: 'family', cd: 10 });
   C('uncle_loan', 'neighbour', 'flirty', '“Your uncle sent me for small money. Emergency. He’ll pay back Friday.”',
-    ['Politely no', { peace: -2, wallet: 1 }], ['Give ₦10k', { wallet: -8, peace: 2, heart: 2 }], { dom: 'family', when: s => s.stats.wallet > 20 });
+    ['Politely no', { peace: -2, wallet: 1 }], ['Give ₦32k', { wallet: -8, peace: 2, heart: 2 }], { dom: 'family', when: s => s.stats.wallet > 20 });
 
   // ===================================================================== WORK
   C('boss_overtime', 'boss', 'determined', '“Everyone is staying till 9pm. Including you.”',
@@ -98,13 +98,13 @@
     { dom: 'work', once: true, w: 0.8, when: s => has(s, 'startup') && s.stats.hustle > 55 });
   C('layoffs', 'boss', 'sad', '“Management is restructuring. Some of you may not be here next month.”',
     ['Update your CV', { hustle: 4, peace: -5 }], ['Work harder', { hustle: 6, peace: -9 }], { dom: 'work', when: s => s.job >= 2, cd: 20 });
-  C('freelance', 'tobi', 'happy', '“I have a gig for you. ₦60,000 for a weekend of work.”',
+  C('freelance', 'tobi', 'happy', '“I have a gig for you. ₦40,000 for a weekend of work.”',
     ['Rest instead', { peace: 5 }], ['Take it', { wallet: 10, peace: -6, hustle: 3 }], { dom: 'work', when: s => s.job <= 1 });
 
   // ===================================================================== HOME
   C('rent_due', 'landlord', 'angry', '“Rent is due. Next year it’s going up by 30%, by the way.”',
     ['Beg for time', { peace: -7, wallet: 2 }, { r: 'He gives you until Friday. Not Friday.', rel: -10, mem: ['late', 'You begged for more time on rent.'], push: [{ id: 'landlord_late', after: 2 }, { id: 'landlord_evict', after: 8 }] }], ['Pay now', { wallet: -12, peace: 3 }, { rel: 4, forget: 'late' }], { dom: 'home', when: s => s.home >= 1, w: 1.3 });
-  C('landlord_hike', 'landlord', 'smug', '“Everything is expensive. Your rent is now ₦900,000 per year.”',
+  C('landlord_hike', 'landlord', 'smug', '“Everything is expensive. Your rent is going up by ₦56,000 this year.”',
     ['Start house hunting', { peace: -5, wallet: 2 }], ['Pay it', { wallet: -14, peace: 2 }], { dom: 'home', when: s => s.home >= 2, cd: 14 });
   C('generator', 'neighbour', 'angry', 'NEPA has taken light for three days. The neighbours want you to share your generator.',
     ['Say no', { peace: -3, heart: -4, wallet: 2 }, { rel: -7, mem: ['refused', 'You wouldn’t share the generator.'] }], ['Share fuel', { wallet: -6, heart: 5, peace: 2 }, { rel: 9, mem: ['shared', 'You shared fuel when the light went.'] }], { dom: 'home' });
@@ -121,15 +121,15 @@
     ['No, forget it', { peace: -4, wallet: -2 }], ['File a report', { peace: 3, hustle: -2, wallet: -3 }], { dom: 'home', when: s => s.home >= 1, cd: 18 });
 
   // ===================================================================== MONEY
-  C('alert', 'banker', 'happy', '“Credit alert! ₦150,000. A client finally paid.”',
+  C('alert', 'banker', 'happy', '“Credit alert! ₦48,000. A client finally paid.”',
     ['Save it', { wallet: 12, peace: 3 }], ['Treat yourself', { wallet: 5, peace: 8, heart: 3 }], { dom: 'money', w: 0.9 });
-  C('ponzi', 'chidi', 'smug', '“Invest ₦50k today, get ₦150k in two weeks. It’s a guaranteed 3×.”',
+  C('ponzi', 'chidi', 'smug', '“Invest ₦56k today, get ₦168k in two weeks. It’s a guaranteed 3×.”',
     ['Pass', { peace: 2 }], ['Invest', { wallet: -14, hustle: 2 }, { push: [{ id: 'ponzi_end', after: 2 }], r: 'Famous last words.' }], { dom: 'money', cd: 18 });
   C('ponzi_end', 'chidi', 'embarrassed', '“Bro… the platform just closed. The app is gone. I’m so sorry.”',
     ['Block him', { peace: -6, heart: -2 }], ['Laugh it off', { peace: 2, heart: 2, wallet: -2 }], { dom: 'money', w: 0, when: () => false });
   C('crypto', 'chidi', 'laughing', '“Buy this coin now! It’s going to the moon!”',
-    ['Ignore', { peace: 3 }], ['Buy ₦30k', { wallet: 6, peace: -6 }, { r: 'The coin went somewhere. Not the moon.' }], { dom: 'money', cd: 14 });
-  C('ajo', 'aunty', 'happy', '“We’re starting ajo. ₦5,000 every week. You get your turn in month six.”',
+    ['Ignore', { peace: 3 }], ['Buy ₦24k', { wallet: -6, peace: -6 }, { r: 'The coin went somewhere. Not the moon.' }], { dom: 'money', cd: 14 });
+  C('ajo', 'aunty', 'happy', '“We’re starting ajo. Everybody pays in every week. Your turn to collect ₦24,000 comes in month six.”',
     ['Not for me', { peace: 1 }], ['Join the ajo', { wallet: 6, heart: 3, peace: -2 }], { dom: 'money', cd: 12 });
   C('data', null, 'sad', 'Your data bundle finished mid-video call. Again.',
     ['Use the office wifi', { hustle: -3, wallet: 1 }], ['Buy 10GB', { wallet: -4, peace: 3 }], { dom: 'money', w: 0.8 });
@@ -143,9 +143,9 @@
   // ===================================================================== FRIENDS & SOCIAL
   C('party', 'dj', 'laughing', '“Detty party tonight! Entry is free if you come with energy.”',
     ['Stay home', { peace: 5, heart: -3 }], ['Pull up', { heart: 8, wallet: -6, peace: -5, hustle: 3 }, { friends: 1 }], { dom: 'social', w: 1.2 });
-  C('tobi_borrow', 'tobi', 'embarrassed', '“{bro}, can you borrow me ₦20k? I’ll sort you Friday. Swear.”',
-    ['Sorry', { heart: -6, peace: 2 }, { rel: -6, mem: ['refused', 'You wouldn’t lend him money.'] }], ['Lend it', { wallet: -8, heart: 6 }, { r: 'Friday came and went.', rel: 4, mem: ['lent', 'You lent him ₦20k.'], push: [{ id: 'tobi_repay', after: 4 }] }], { dom: 'social', when: s => s.stats.wallet > 20, cd: 10 });
-  C('wedding_invite', 'adaeze', 'happy', '“I’m getting married! You must come. Aso-ebi is ₦25,000.”',
+  C('tobi_borrow', 'tobi', 'embarrassed', '“{bro}, can you borrow me ₦32k? I’ll sort you Friday. Swear.”',
+    ['Sorry', { heart: -6, peace: 2 }, { rel: -6, mem: ['refused', 'You wouldn’t lend him money.'] }], ['Lend it', { wallet: -8, heart: 6 }, { r: 'Friday came and went.', rel: 4, mem: ['lent', 'You lent him ₦32k.'], push: [{ id: 'tobi_repay', after: 4 }] }], { dom: 'social', when: s => s.stats.wallet > 20, cd: 10 });
+  C('wedding_invite', 'adaeze', 'happy', '“I’m getting married! You must come. Aso-ebi is ₦40,000.”',
     ['Send a gift only', { wallet: -3, heart: -3 }], ['Buy the aso-ebi', { wallet: -10, heart: 8, hustle: 3 }, { friends: 1 }], { dom: 'social', cd: 12 });
   C('friend_gossip', 'adaeze', 'thinking', '“Okay, but are you really happy where you are?”',
     ['Of course', { peace: 3, heart: -1 }], ['Honestly, no', { peace: -2, heart: 5, hustle: 2 }], { dom: 'social', w: 0.7 });
@@ -175,13 +175,13 @@
   // ===================================================================== CITY LIFE
   C('traffic', 'conductor', 'laughing', '“Third Mainland is stuck! Na two hours o. Which road you wan take?”',
     ['Wait it out', { peace: -5, hustle: -3 }], ['Take the okada', { wallet: -3, peace: -4, hustle: 3 }, { r: 'You arrive alive. Barely.' }], { dom: 'city', w: 1.2 });
-  C('danfo_fight', 'conductor', 'angry', '“{sir}, change! Your ₦200 note is tearing. Add another ₦50.”',
+  C('danfo_fight', 'conductor', 'angry', '“{sir}, I have no change for your ₦5,000 note. Just leave ₦4,000 for me, abeg.”',
     ['Argue', { peace: -4, hustle: -2 }], ['Pay and move on', { wallet: -1, peace: 2 }], { dom: 'city' });
   C('checkpoint', 'officer', 'smug', '“Your particulars? You look like somebody that can ‘settle’.”',
     ['Insist on the law', { peace: -6, hustle: 3 }, { r: 'It takes forty minutes. You win. Technically.' }], ['Settle him', { wallet: -4, peace: 2 }], { dom: 'city' });
   C('fuel', 'conductor', 'scared', 'Fuel scarcity. The queue stretches round the corner.',
     ['Queue for hours', { hustle: -6, peace: -4, wallet: 1 }], ['Buy from the black market', { wallet: -8, peace: -1 }], { dom: 'city', cd: 10 });
-  C('mechanic', 'mechanic', 'determined', '“Your car engine… we need to change everything. ₦280,000.”',
+  C('mechanic', 'mechanic', 'determined', '“Your car engine… we need to change everything. ₦56,000.”',
     ['Get a second opinion', { peace: -3, wallet: -3 }], ['Fix it', { wallet: -14, hustle: 3 }], { dom: 'city', when: s => s.job >= 3, cd: 18 });
   C('lagos_light', null, 'happy', 'NEPA brought light. Everyone is screaming with joy.',
     ['Cook everything', { wallet: -2, peace: 4 }], ['Charge everything', { peace: 5, hustle: 2 }], { dom: 'city', w: 0.5 });
@@ -192,7 +192,7 @@
 
   // ===================================================================== FAITH & COMMUNITY
   C('pastor', 'pastor', 'happy', '“A word for you today: the Lord says your season is coming. Also, building fund.”',
-    ['Nod politely', { peace: 4 }], ['Give ₦5k', { wallet: -5, peace: 7, heart: 3 }], { dom: 'faith', w: 0.8 });
+    ['Nod politely', { peace: 4 }], ['Give ₦20k', { wallet: -5, peace: 7, heart: 3 }], { dom: 'faith', w: 0.8 });
   C('aunty_match', 'aunty', 'flirty', '“I have the perfect person for you. Their family is very respectable.”',
     ['No thanks, Aunty', { peace: -2, heart: -1 }], ['Meet them', { heart: 4, peace: -4 }, { push: [{ id: 'aunty_date', after: 1 }] }], { dom: 'faith', when: s => !s.partner, cd: 14 });
   C('aunty_date', 'aunty', 'embarrassed', 'The “perfect person” has a lot of opinions about your career. Also, your hairline.',
@@ -241,7 +241,7 @@
   C('landlord_evict', 'landlord', 'rage', '“Seven days. I’m done with excuses. Pack your things or I change the lock.”',
     ['Move back to Mama’s', { peace: -9, wallet: 3, hustle: -4 }, { home: -1, r: 'Back to the box room and the commentary.' }], ['Plead for a month', { wallet: -20, peace: -10 }, { rel: 6 }],
     { dom: 'home', w: 2, cd: 20, when: s => s.home >= 1 && relOf(s, 'landlord') < 15 });
-  C('tobi_repay', 'tobi', 'laughing', s => (relOf(s, 'tobi') >= 45 ? '“{bro}! Look at me. I sorted your ₦20k, plus a little extra for the wait. Thank you for believing in me.”' : '“About that ₦20k… Bro, I’m still looking. Please don’t be angry.”'),
+  C('tobi_repay', 'tobi', 'laughing', s => (relOf(s, 'tobi') >= 45 ? '“{bro}! Look at me. I sorted your ₦32k. Thank you for believing in me.”' : '“About that ₦32k… Bro, I’m still looking. Please don’t be angry.”'),
     ['Tell him to keep it', { heart: 8, peace: 2 }, { rel: 8, forget: 'lent' }], ['Collect it', { wallet: 8, heart: 2 }, { rel: 2, forget: 'lent' }],
     { dom: 'social', w: 0, when: () => false });
   C('boss_notice', 'boss', 'determined', '“Your name keeps coming up for leaving early. I’m not saying anything. But I’m noticing.”',

@@ -53,19 +53,19 @@
       h('div.hero-portrait', LS.portrait.still(look.genome, 150), pl.avatar ? h('img.avatar-chip', { src: pl.avatar, alt: 'Your Lagos Life avatar' }) : null),
       h('div.hero-text', h('h3', pl.name), h('p', `Age ${s.age} · ${LS.STATUS[s.status]}`), h('p.muted', LS.platform.mode === 'dev' ? 'Playing as a guest' : 'Lagos Life player'),
         h('p.score', 'Score ', h('b', E.score(s)))));
-    const J = LS.JOBS[s.job], H = LS.HOMES[s.home];
+    const J = LS.JOBS[s.job], H = LS.HOMES[s.home], mo = E.monthly(s);
     const rows = h('div.rows',
-      lifeRow('Work', J.title, J.blurb), lifeRow('Home', H.title, H.blurb),
+      lifeRow('Work', J.title, `${J.blurb} Pays about ${LS.naira(mo.pay)} a month.`), lifeRow('Home', H.title, `${H.blurb} ${mo.costs ? `Costs about ${LS.naira(mo.costs)} a month with food.` : 'No rent. Food is on Mama.'}`),
       s.partner ? h('div.lrow', h('div.k', 'Partner'), h('div.v', h('div.mini', thumb(Object.assign({}, s.partner.genome), 44)), h('div', h('b', s.partner.name), h('small', LS.STATUS[s.status])))) : lifeRow('Partner', 'None yet', 'Owambes are good for that.'),
       lifeRow('Friends', String(s.friends), s.friends >= 5 ? 'A proper crew.' : 'Go to more owambes.'),
-      lifeRow('Money', E.moneyText(s, LS.social.bank), `${G.charmCount()} lucky charm${G.charmCount() === 1 ? '' : 's'} in hand`));
+      lifeRow('Cash', E.moneyText(s, LS.social.bank), `Your Wallet bar and anything you bought. ${G.charmCount()} lucky charm${G.charmCount() === 1 ? '' : 's'} in hand.`));
     const bars = h('div.statrows', LS.STAT_KEYS.map(k => h('div.srow2', h('span', LS.STATS[k].label), h('div.track', h('i', { style: { width: Math.round(s.stats[k]) + '%' }, class: 'fill f-' + k })), h('small', LS.STATS[k].blurb))));
     const meta = G.meta;
     const found = Object.keys(meta.endings || {}).length;
     const legacy = h('div.legacy', h('div', 'Runs ', h('b', meta.runs || 0)), h('div', 'Best ', h('b', meta.best || 0)), h('div', 'Endings ', h('b', `${found}/${Object.keys(LS.ENDINGS).length}`)));
     const actions = h('div.actions',
       h('button.btn.primary', { type: 'button', onclick: () => LS.customize({ intro: false }) }, 'Customise your look'),
-      h('button.btn', { type: 'button', onclick: () => LS.showBank() }, 'Bank'),
+      h('button.btn', { type: 'button', onclick: () => LS.showBank() }, 'Shop'),
       h('button.btn', { type: 'button', onclick: () => LS.showPeople() }, 'People & stories'),
       h('button.btn', { type: 'button', onclick: () => LS.showBoard() }, 'Leaderboard'));
     Sheet.open('Your life', h('div', hero, rows, section('How you’re doing', bars), legacy, actions));
@@ -146,6 +146,7 @@
       section('Sound', sound),
       section('Shop', shop),
       section('Play', h('div.actions', h('button.btn', { type: 'button', onclick: () => LS.showPeople() }, 'People & stories'), h('button.btn', { type: 'button', onclick: () => LS.showBoard() }, 'Leaderboard'),
+        h('button.btn', { type: 'button', onclick: () => { Sheet.close(); LS.tutorial.restart(); } }, 'Show the tips again'),
         h('button.btn', { type: 'button', onclick: () => { if (confirm('Start a new life? This one ends here.')) { Sheet.close(); G.restart(); } } }, 'New life'))),
       section('About', h('p.muted', 'Lagos Swipe is a life sim. Decide with a swipe or a tap on a postcard. Keep Wallet, Heart, Hustle and Peace off the ends, look after the people who matter, and reach 35.'),
         h('p.muted', online ? 'Online: other real players can turn up in your day.' : 'Offline: playing with the Lagos crowd only.'),

@@ -25,6 +25,15 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .hud-money { font-family: var(--font-marker); font-size: 1.3rem; color: var(--green); background: #fffaf0; border: 3px solid var(--ink); border-radius: 8px; padding: 1px 14px; box-shadow: 0 3px 0 rgba(26,20,16,.2); cursor: pointer; }
 .hud-money::after { content: '+'; margin-left: 8px; padding: 0 5px; border-radius: 50%; background: var(--green); color: #fffaf0; font-size: 1rem; }
 .hud-money:active { transform: translateY(2px); box-shadow: none; }
+.hud-cash { position: relative; }
+.hud-money { position: relative; }
+.hud-money::before { content: 'CASH'; position: absolute; top: -9px; left: 8px; font: 400 .6rem/1 var(--font-marker); letter-spacing: .08em; color: var(--ink); background: var(--ochre); border: 2px solid var(--ink); border-radius: 5px; padding: 2px 5px 1px; transform: rotate(-3deg); }
+.money-flash { position: absolute; left: 50%; top: 100%; margin-top: 6px; transform: translateX(-50%); display: grid; justify-items: center; gap: 3px; pointer-events: none; z-index: 6; white-space: nowrap; }
+.money-flash b, .money-flash small { padding: 1px 9px; border: 2px solid var(--ink); border-radius: 9px; background: #fffaf0; animation: moneyIn .25s cubic-bezier(.2,1.5,.4,1) both; box-shadow: 0 2px 0 rgba(26,20,16,.22); }
+.money-flash b { font: 400 1.15rem var(--font-marker); }
+.money-flash small { font: 700 .72rem var(--font-hand); animation-delay: .35s; }
+.money-flash .up { color: var(--green); } .money-flash .down { color: var(--red); }
+@keyframes moneyIn { from { opacity: 0; transform: translateY(-8px) scale(.8); } to { opacity: 1; transform: none; } }
 .hud-right { display: flex; gap: 8px; }
 .icon-btn { position: relative; width: 38px; height: 38px; border: 2.5px solid var(--ink); border-radius: 6px; background: #fffaf0; padding: 0; display: grid; place-items: center; box-shadow: 0 3px 0 rgba(26,20,16,.2); }
 .icon-btn:active { transform: translateY(2px); box-shadow: none; }
@@ -141,6 +150,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .postcard.dim { opacity: .55; filter: saturate(.55); transform: translateY(2px) rotate(0) scale(.97); }
 .pc-art { display: block; aspect-ratio: 10 / 6.4; border: 2px solid var(--ink); overflow: hidden; }
 .pc-art svg { width: 100%; height: 100%; display: block; }
+.pc-money { position: absolute; top: 9px; right: 9px; z-index: 2; font: 400 .85rem/1 var(--font-marker); padding: 3px 7px 2px; border: 2px solid var(--ink); border-radius: 8px; background: #fffaf0; box-shadow: 0 2px 0 rgba(26,20,16,.25); }
+.pc-money:empty { display: none; } .pc-money.up { color: var(--green); } .pc-money.down { color: var(--red); }
 .pc-lbl { display: grid; place-items: center; margin: 5px -5px 0; padding: 3px 6px; min-height: 2.5em; background: var(--c); color: #fffaf0; font: 400 .98rem/1.1 var(--font-marker); border-top: 3px solid var(--ink); text-shadow: 0 1px 0 rgba(26,20,16,.4); }
 .postcards.swap .postcard { animation: pcIn .34s cubic-bezier(.2,1.4,.4,1) both; }
 .postcards.swap .pc-r { animation-delay: .05s; }
@@ -200,6 +211,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .stash > div { padding: 6px 4px; border: 2px dashed var(--ochre); border-radius: 12px; background: #fffaf0; }
 .stash b { display: block; font: 400 1.5rem/1.1 var(--font-marker); color: var(--green); }
 .stash small { color: var(--ink-soft); }
+.stash em { display: block; margin-top: 3px; font-size: .72rem; font-style: normal; line-height: 1.15; color: var(--ink-soft); }
 .item.pack { align-items: center; }
 .item.pack .price { flex: 0 0 auto; padding: 4px 12px; border: 2px solid var(--ink); border-radius: 10px; background: var(--ochre); font: 400 1rem var(--font-marker); white-space: nowrap; }
 .item.pack.real .price { background: var(--green); color: #fffaf0; }
@@ -272,3 +284,17 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .splash .fine { margin-top: 22px; display: inline-block; padding: 1px 10px; background: rgba(255,250,240,.85); border-radius: 8px; }
 /* the face frame fades into the picture so there are no hard side bands */
 .portrait-canvas { -webkit-mask-image: linear-gradient(to right, transparent, #000 12%, #000 88%, transparent); mask-image: linear-gradient(to right, transparent, #000 12%, #000 88%, transparent); }
+
+/* ---- first-time tour: a sticky note and pencilled arrows ---- */
+.tut { position: absolute; inset: 0; z-index: 8; pointer-events: none; }
+.tut-svg { position: absolute; inset: 0; overflow: visible; }
+@keyframes tutDraw { to { stroke-dashoffset: 0; } }
+.tut-note { position: absolute; box-sizing: border-box; pointer-events: auto; padding: 12px 13px 8px; background: #fff0a8; border: 3px solid var(--ink); border-radius: 3px 10px 4px 12px;
+  box-shadow: 0 5px 0 rgba(26,20,16,.28), 0 14px 20px rgba(60,36,10,.22); transform: rotate(var(--tilt, -1.2deg)); animation: tutPop .38s cubic-bezier(.2,1.5,.4,1) both; }
+.tut-note::before { content: ''; position: absolute; top: -12px; left: 50%; width: 56px; height: 18px; transform: translateX(-50%) rotate(-3deg); background: rgba(255,255,255,.6); border: 1.5px solid rgba(26,20,16,.22); }
+.tut-note p { margin: 0 0 7px; font: 700 1rem/1.25 var(--font-hand); color: var(--ink); }
+.tut-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.tut-hint { font-size: .8rem; font-style: italic; color: var(--ink-soft); }
+.tut-actions .linkbtn { font-size: .78rem; font-weight: 400; color: var(--ink-soft); }
+@keyframes tutPop { from { opacity: 0; transform: rotate(var(--tilt, -1.2deg)) translateY(10px) scale(.86); } }
+@media (prefers-reduced-motion: reduce) { .tut-svg path { animation: none !important; stroke-dashoffset: 0 !important; } .tut-note { animation: none; } }

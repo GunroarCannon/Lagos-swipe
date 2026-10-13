@@ -205,18 +205,90 @@ try {
   await sleep(300);
   check('a life is running with a Wallet stat', await cdp.eval(`!!(LS.Game.s && typeof LS.Game.s.stats.wallet === 'number')`));
 
+  // ---- the tour: a sticky note and a pencilled arrow, once
+  console.log('\n-- the first-time tour --');
+  const tut = () => cdp.eval(`(() => { const r = document.getElementById('tutorial'); const n = r && r.querySelector('.tut-note'); return { shown: !!r && !r.hidden && !!n, text: n ? n.textContent : '', paths: r ? r.querySelectorAll('path').length : 0, ok: n ? [...n.querySelectorAll('button')].map(b => b.textContent) : [] }; })()`);
+  await sleep(900);
+  let t0 = await tut();
+  check('a brand-new player sees a note on the first card', t0.shown && /Drag the card/.test(t0.text), t0.text.slice(0, 60));
+  check('the note comes with pencilled arrows and rings', t0.paths >= 4, 'paths=' + t0.paths);
+  check('the first tip does not need a button: doing it is the answer', !t0.ok.includes('Got it'));
+  const through = await cdp.eval(`getComputedStyle(document.getElementById('tutorial')).pointerEvents`);
+  check('the overlay lets touches through to the game', through === 'none', through);
+  await cdp.shot('0a-tour-swipe');
+  await cdp.eval(`document.getElementById('pc-R').click()`);
+  await sleep(1700);
+  let t1 = await tut();
+  check('after the first choice the bars are explained', t1.shown && /four bars/.test(t1.text), t1.text.slice(0, 60));
+  await cdp.shot('0b-tour-bars');
+  await cdp.eval(`document.querySelector('#tutorial .tut-note .btn').click()`);
+  await sleep(900);
+  let t2 = await tut();
+  check('then the cash is explained', t2.shown && /your cash/.test(t2.text) && /shop/.test(t2.text), t2.text.slice(0, 60));
+  await cdp.shot('0c-tour-cash');
+  await cdp.eval(`document.querySelector('#tutorial .tut-note .btn').click()`);
+  // keep playing until a card that moves cash turns up, then the tip must point at the naira chips
+  let t3 = { shown: false };
+  for (let i = 0; i < 14 && !t3.shown; i++) {
+    await cdp.eval(`(() => { const s = LS.Game.s; for (const k of LS.STAT_KEYS) s.stats[k] = Math.max(40, Math.min(60, s.stats[k])); LS.Game.updateHud(); document.getElementById('pc-L').click(); })()`);
+    await sleep(1500);
+    t3 = await tut();
+  }
+  check('a tip points at the money chips on the first card that costs or pays', t3.shown && /money in/.test(t3.text), t3.text.slice(0, 60));
+  const chips = await cdp.eval(`[...document.querySelectorAll('.pc-money')].map(c => c.textContent).filter(Boolean)`);
+  check('that card shows its price in naira on the postcards', chips.length > 0 && chips.every(c => /^[+−]₦[\d,]+$/.test(c)), chips.join(' '));
+  await cdp.shot('0d-tour-cost');
+  await cdp.eval(`document.querySelector('#tutorial .tut-note .btn').click()`);
+  await sleep(700);
+  for (let i = 0; i < 6; i++) { const t = await tut(); if (t.shown && /inbox/.test(t.text)) break; await cdp.eval(`document.getElementById('pc-L').click()`); await sleep(1500); }
+  let t4 = await tut();
+  check('last, where real players and the menu are', t4.shown && /inbox/.test(t4.text), t4.text.slice(0, 60));
+  await cdp.shot('0e-tour-people');
+  await cdp.eval(`[...document.querySelectorAll('#tutorial .tut-note .btn')].find(b => b.textContent === 'Done').click()`);
+  await sleep(500);
+  check('the tour is over and remembered', await cdp.eval(`!document.getElementById('tutorial').querySelector('.tut-note') && LS.Game.meta.tut === true`));
+  await cdp.eval(`LS.Game.s.queue = []; true`);
+
+  // ---- the economy reads the same everywhere
+  console.log('\n-- one economy --');
+  await cdp.eval(`(() => { const s = LS.Game.s; for (const k of LS.STAT_KEYS) s.stats[k] = 55; s.stats.wallet = 60; s.queue.unshift({ id: 'uncle_loan', at: 0 }); LS.Game.next(); })()`);
+  await sleep(1300);
+  const lbl = await cdp.eval(`({ label: document.querySelector('#pc-R .pc-lbl').textContent, chip: document.querySelector('#pc-R .pc-money').textContent })`);
+  check('"Give ₦32k" is a −₦32,000 chip on the postcard', lbl.label === 'Give ₦32k' && lbl.chip === '−₦32,000', JSON.stringify(lbl));
+  const cash0 = await cdp.eval(`LS.Engine.cash(LS.Game.s, LS.social.bank)`);
+  await cdp.eval(`document.getElementById('pc-R').click()`);
+  await sleep(700);
+  const flash = await cdp.eval(`[...document.querySelectorAll('#money-flash > *')].map(e => e.textContent)`);
+  check('the cash at the top says what just left it', flash[0] === '−₦32,000', flash.join(' | '));
+  const cash1 = await cdp.eval(`LS.Engine.cash(LS.Game.s, LS.social.bank)`);
+  const mo = await cdp.eval(`LS.Engine.monthly(LS.Game.s)`);
+  const drop = cash0 - cash1;
+  check('the number really dropped by that, give or take the month’s pay and bills', Math.abs(drop - (32000 - (mo.pay - mo.costs))) <= 200, `dropped ${drop}, month ${mo.pay - mo.costs}`);
+  check('and the month’s pay is shown on its own line, not hidden in the total', flash.length === 1 || /Pay day|Rent and food/.test(flash[1] || ''), flash.join(' | '));
+  await sleep(800);
+  await cdp.eval(`LS.showLife()`);
+  await sleep(700);
+  const lifeText = await cdp.eval(`document.querySelector('.sheet').textContent`);
+  check('Your life says what the job pays and the home costs, in naira', /Pays about ₦[\d,]+ a month/.test(lifeText) && /Costs about ₦[\d,]+ a month/.test(lifeText));
+  check('and calls the number cash', /Cash/.test(lifeText));
+  await cdp.shot('0f-life');
+  await cdp.eval(`LS.sheet.close()`);
+
+
   await cdp.eval(`LS.showBank()`);
   await sleep(900);
   check('the shop sheet opened', await cdp.eval(`!document.getElementById('sheet').hidden && !!document.querySelector('.bank')`));
-  check('it shows what you have: naira and charms', await cdp.eval(`/₦/.test(document.querySelector('.stash b')?.textContent || '') && document.querySelectorAll('.stash b').length === 2`),
+  check('it shows what you have: cash and charms', await cdp.eval(`/₦/.test(document.querySelector('.stash b')?.textContent || '') && document.querySelectorAll('.stash b').length === 2`),
     await cdp.eval(`document.querySelector('.stash')?.textContent`));
   check('the shop naira is the same number as the HUD', await cdp.eval(`document.querySelector('.bank .stash b').textContent === document.getElementById('hud-money').textContent`),
     await cdp.eval(`document.querySelector('.bank .stash b').textContent + ' vs ' + document.getElementById('hud-money').textContent`));
   const sectionNames = await cdp.eval(`[...document.querySelectorAll('.bank h3')].map(h => h.textContent)`);
-  check('it has exactly two things to buy, said plainly', sectionNames.join('|') === 'Lucky charms|Buy naira', sectionNames.join(' | '));
+  check('it is split by who pays: your cash, or real money', sectionNames.join('|') === 'Spend your cash|Pay with real money', sectionNames.join(' | '));
   check('charms can be bought with real money', await cdp.eval(`[...document.querySelectorAll('.bank .pack.real')].some(b => /lucky charms/.test(b.textContent) && /Pay ₦100/.test(b.textContent))`));
-  check('naira can be bought with real money', await cdp.eval(`[...document.querySelectorAll('.bank .pack.real')].some(b => /₦50,000 naira/.test(b.textContent) && /Pay ₦200/.test(b.textContent))`));
-  check('there is no second currency: no wallet points, no bank, no exchange', await cdp.eval(`!/wallet|in the bank|in-game naira|exchange/i.test(document.querySelector('.bank').textContent)`),
+  check('cash can be bought with real money', await cdp.eval(`[...document.querySelectorAll('.bank .pack.real')].some(b => /₦50,000 cash/.test(b.textContent) && /Pay ₦200/.test(b.textContent))`));
+  check('every real-money button says Pay, and no cash button does', await cdp.eval(`[...document.querySelectorAll('.bank .pack')].every(b => b.classList.contains('real') === /^Pay /.test(b.querySelector('.price').textContent))`));
+  check('the shop says what cash and a charm are for', await cdp.eval(`/Wallet bar/.test(document.querySelector('.bank .stash').textContent) && /bar hits the edge/.test(document.querySelector('.bank .stash').textContent)`));
+  check('there is no third kind of money: no wallet points, no bank, no exchange', await cdp.eval(`!/wallet points|in the bank|in-game naira|exchange/i.test(document.querySelector('.bank').textContent)`),
     await cdp.eval(`document.querySelector('.bank').textContent.slice(0, 200)`));
   check('no stale offline message while the server answers', await cdp.eval(`!/offline|Couldn.t reach|Prices load/i.test(document.querySelector('.bank').textContent)`));
   await cdp.shot('3-bank');
@@ -238,7 +310,7 @@ try {
   await sleep(500);
   const hud1 = await cdp.eval(`LS.Game.s.stats.wallet * 3500 + LS.social.bank`);
   check('and the charm costs exactly ₦10,000 of the one balance', Math.round(hud0 - hud1) === 10000, `${hud0} → ${hud1}`);
-  check('the HUD shows the new balance', await cdp.eval(`document.getElementById('hud-money').textContent === LS.naira(LS.Game.s.stats.wallet * 3500 + LS.social.bank)`));
+  check('the HUD shows the new balance', await cdp.eval(`document.getElementById('hud-money').textContent === LS.Engine.moneyText(LS.Game.s, LS.social.bank)`));
   const wallet1 = await cdp.eval(`LS.Game.s.stats.wallet`);
   check('the Wallet bar never drops to the edge', wallet1 > 0.5, wallet1.toFixed(1));
   await cdp.shot('4-bank-after-charm');
@@ -253,7 +325,7 @@ try {
   // the hamburger menu sells things directly too
   await cdp.eval(`LS.sheet.close(); LS.showMenu()`);
   await sleep(900);
-  check('the menu has the shop inline', await cdp.eval(`document.querySelectorAll('.menu .bank .pack.real').length >= 4 && /Lucky charms/.test(document.querySelector('.menu .bank').textContent)`));
+  check('the menu has the shop inline', await cdp.eval(`document.querySelectorAll('.menu .bank .pack.real').length >= 4 && /lucky charms/i.test(document.querySelector('.menu .bank').textContent)`));
   await cdp.shot('4b-menu-shop');
 
   // ---- a story longer than the card must be readable, not clipped

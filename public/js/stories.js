@@ -23,16 +23,16 @@
     Object.assign({ when: s => s.job >= 1 && s.stats.hustle >= 35 && s.month >= 4 }, su));
   CH('su_regret', 'tobi', 'happy', 'Tobi’s app is on TechCabal this morning. “No hard feelings, {bro}. Come to the launch party at least.”',
     ['Go and clap', { heart: 3, peace: -2 }, { rel: 4 }], ['Mute him', { peace: 1, heart: -2 }, { rel: -4 }], su);
-  CH('su_dev', '@dev', 'thinking', '“I can ship a first version in six weeks. ₦400k, half upfront. Or I take a slice of the company and a smaller fee. Your call.”',
+  CH('su_dev', '@dev', 'thinking', '“I can ship a first version in six weeks. ₦96k, half upfront. Or I take a slice of the company and a smaller fee. Your call.”',
     ['Pay cash', { wallet: -12, hustle: 2 }, { set: { su_cash: true }, rel: 6, mem: ['paid', 'You paid them properly, and on time.'], ic: 'cash', push: [{ id: 'su_beta', after: 2 }] }],
     ['Offer equity', { wallet: -3, hustle: 3 }, { set: { su_equity: true }, rel: 2, mem: ['equity', 'You paid them in a slice of a company that barely exists.'], ic: 'chat', push: [{ id: 'su_beta', after: 2 }] }], su);
   CH('su_beta', 'tobi', 'happy', '“We’re live in two estates in Lekki. Forty orders on day one. One customer says her jollof came cold and she’s tweeting about it.”',
     ['Fix it yourself', { hustle: 5, peace: -6 }, { set: { su_hands: true }, ic: 'work', intro: { role: 'investor', sub: 'Angel investor', g: 'any', years: [44, 60] }, push: [{ id: 'su_investor', after: 2 }] }],
     ['Hire customer care', { wallet: -5, peace: 2 }, { ic: 'phone', intro: [{ role: 'ops', sub: 'Customer care lead', g: 'fem', years: [24, 32] }, { role: 'investor', sub: 'Angel investor', g: 'any', years: [44, 60] }],
       push: [{ id: 'su_investor', after: 2 }, { id: 'su_strike', after: 4, p: 0.75 }] }], su);
-  CH('su_investor', '@investor', 'smug', '“{investor} here. I back founders who suffer a little. Fifteen percent for ₦5 million, and I want a seat at the table.”',
+  CH('su_investor', '@investor', 'smug', '“{investor} here. I back founders who suffer a little. Fifteen percent for ₦56,000, and I want a seat at the table.”',
     ['Hold out for better', { hustle: 3, peace: -2 }, { set: { su_hold: true }, rel: -6, mem: ['held', 'You turned down their first offer.'], ic: 'no', push: [{ id: 'su_crunch', after: 3 }] }],
-    ['Take the money', { wallet: 14, hustle: 4, peace: -3 }, { set: { su_funded: true }, rel: 6, ic: 'cash', story: ['startup', 'You took ₦5 million from {investor}.'], push: [{ id: 'su_crunch', after: 3 }, { id: 'su_board', after: 5 }] }], su);
+    ['Take the money', { wallet: 14, hustle: 4, peace: -3 }, { set: { su_funded: true }, rel: 6, ic: 'cash', story: ['startup', 'You took ₦56,000 from {investor}.'], push: [{ id: 'su_crunch', after: 3 }, { id: 'su_board', after: 5 }] }], su);
   CH('su_strike', '@ops', 'sad', '“Boss, the riders are on strike over the fuel price. Orders are piling up. What do I tell the customers?”',
     ['Raise their pay', { wallet: -8, peace: 2 }, { set: { su_fairpay: true }, rel: 6, mem: ['fair', 'You raised rider pay when it counted.'], ic: 'cash' }],
     ['Hold the line', { peace: -5, hustle: -3 }, { rel: -8, mem: ['line', 'You held the line on rider pay.'], ic: 'no' }], su);
@@ -48,10 +48,10 @@
     ['Call their bluff', { hustle: -6, peace: -4 }, { set: { su_devleft: true }, rel: -20, mem: ['bluff', 'You called their bluff and lost the developer.'], story: ['startup', '{dev} left, and took the code.'], ic: 'no' }], su);
   CH('su_board', '@investor', 'determined', '“Quarterly review. Growth is flat. I can’t keep feeding a flat line, so tell me what changes.”',
     ['Defend the plan', { hustle: 4, peace: -5 }, { rel: -4, ic: 'work' }], ['Promise numbers', { hustle: -2, peace: -3 }, { set: { su_promised: true }, rel: 4, ic: 'chat' }], su);
-  CH('su_exit', 'tobi', 'thinking', s => `A bigger company wants to buy you out for ₦12 million. ${flag(s, 'su_devleft') ? 'There’s no developer left, so the offer is the best you’ll get.' : 'The app works, and you’re both tired.'} Sell, or keep going?`,
+  CH('su_exit', 'tobi', 'thinking', s => `A bigger company wants to buy you out for ₦216,000. ${flag(s, 'su_devleft') ? 'There’s no developer left, so the offer is the best you’ll get.' : 'The app works, and you’re both tired.'} Sell, or keep going?`,
     ['Sell', { peace: 4 }, { ic: 'cash', push: [{ id: 'su_sold', after: 0.3 }] }],
     ['Keep going', { hustle: 4, peace: -3 }, { ic: 'work', push: s => [{ id: s.stats.hustle >= 55 && !flag(s, 'su_devleft') ? 'su_win' : 'su_fail', after: 1 }] }], su);
-  CH('su_sold', 'tobi', 'happy', '“Done. ₦12 million, split three ways. The app still exists. It’s somebody else’s problem now.”',
+  CH('su_sold', 'tobi', 'happy', '“Done. ₦216,000, split three ways. The app still exists. It’s somebody else’s problem now.”',
     ['Take your share', { wallet: 18, hustle: -4, peace: 5 }, { ic: 'cash', story: ['startup', 'You sold the company.', 'done'], set: { su_done: true } }],
     ['Reinvest it', { wallet: 6, hustle: 8 }, { ic: 'work', job: 1, story: ['startup', 'You sold the company and started again with the money.', 'done'], set: { su_done: true } }], su);
   CH('su_win', 'tobi', 'laughing', s => `“We hit ten thousand orders a week. ${flag(s, 'su_funded') ? '{investor} is already texting about a bigger round.' : 'Three banks want to talk to us.'} {bro}, we’re actually doing this.”`,
@@ -64,7 +64,7 @@
   // ===================================================================== THE ESTATE COMMITTEE
   ST('estate', 'The Estate Committee', 'A transformer levy, a chairman, a contractor with an envelope. Small politics, long memories.');
   const es = { story: 'estate' };
-  HOOK('es_levy', 'neighbour', 'angry', '“The chairman says ₦15,000 each for the transformer. People say he is eating the money. But no light, no life.”',
+  HOOK('es_levy', 'neighbour', 'angry', '“The chairman says ₦20,000 each for the transformer. People say he is eating the money. But no light, no life.”',
     ['Refuse to pay', { wallet: 2, peace: -3 }, { rel: -8, mem: ['nolevy', 'You refused the transformer levy.'], ic: 'no', story: ['estate', 'You refused the transformer levy.'], push: [{ id: 'es_dark', after: 3 }] }],
     ['Pay, ask for a receipt', { wallet: -5, peace: 1 }, { rel: 6, ic: 'cash', story: ['estate', 'You paid the levy and asked for a receipt.'],
       intro: { role: 'chairman', sub: 'Estate chairman', g: 'masc', years: [56, 66], title: 'Chief' }, push: [{ id: 'es_meeting', after: 1.5 }] }],
@@ -100,7 +100,7 @@
     ['Yes, of course', { heart: 4, peace: -2 }, { rel: 10, mem: ['standing', 'You said yes, and stood with her.'], ic: 'heart', story: ['wedding', 'You are Adaeze’s chief {maid}.'],
       intro: { role: 'planner', sub: 'Wedding planner', g: 'fem', years: [30, 42] }, push: [{ id: 'wd_planner', after: 1 }] }],
     Object.assign({ when: s => s.friends >= 2 && s.month >= 6 }, wd));
-  CH('wd_planner', '@planner', 'smug', '“Budget is ₦6 million. Colour of the day is lilac. Your aso-ebi is ₦40,000. And you do not have a vote on any of this.”',
+  CH('wd_planner', '@planner', 'smug', '“Budget is ₦6 million. Colour of the day is lilac. Your aso-ebi is ₦24,000. And you do not have a vote on any of this.”',
     ['Fight the budget', { hustle: 2, peace: -3 }, { rel: -8, set: { wd_cheap: true }, ic: 'chat', push: [{ id: 'wd_clash', after: 2 }] }],
     ['Go along', { wallet: -6, heart: 2 }, { rel: 5, ic: 'cash', push: [{ id: 'wd_clash', after: 2 }] }], wd);
   CH('wd_clash', '@planner', 'angry', 'Adaeze wants her aunty’s choir. {planner} wants a DJ and a smoke machine. Both of them are looking at you.',
@@ -136,13 +136,13 @@
     ['Wish him well', { heart: -2, peace: 1 }, { rel: 3 }],
     ['Ask how he did it', { hustle: 2 }, { rel: 2, ic: 'chat', intro: { role: 'agent', sub: 'Visa consultant', g: 'any', years: [30, 45] }, story: ['japa', 'Tobi is leaving. You started asking how.'], push: [{ id: 'jp_agent', after: 1 }] }],
     Object.assign({ w: 0.8, when: s => s.month >= 8 && s.stats.peace <= 58 }, jp));
-  CH('jp_agent', '@agent', 'smug', '“Processing is ₦1.2 million. ₦800k now, ₦400k after approval. Guaranteed. Hundreds have gone through me.”',
+  CH('jp_agent', '@agent', 'smug', '“Processing is ₦108,000. ₦72,000 now, ₦36,000 after approval. Guaranteed. Hundreds have gone through me.”',
     ['Check reviews, then pay', { wallet: -18, hustle: 1 }, { set: { jp_paid: true, jp_checked: true }, ic: 'phone', push: [{ id: 'jp_docs', after: 2 }] }],
     ['Pay now', { wallet: -18 }, { set: { jp_paid: true }, mem: ['paid', 'You paid the deposit without checking.'], ic: 'cash', push: [{ id: 'jp_docs', after: 1.5 }] }], jp);
   CH('jp_docs', null, 'thinking', 'IELTS in Ikeja, proof of funds, transcripts, a police report. The checklist is longer than your rent receipt.',
     ['Study every night', { hustle: 6, peace: -8 }, { set: { jp_ielts: true }, ic: 'work', push: jpResult }],
     ['Wing it', { peace: 2 }, { ic: 'bed', push: jpResult }], jp);
-  CH('jp_scam', '@agent', 'smug', '“The number you have dialled is not reachable.” Your ₦800k is a screenshot now.',
+  CH('jp_scam', '@agent', 'smug', '“The number you have dialled is not reachable.” Your ₦72,000 is a screenshot now.',
     ['Report to the police', { hustle: -2, peace: -3 }, { ic: 'church', story: ['japa', 'The agent disappeared with your deposit.', 'failed'] }],
     ['Let it go', { peace: -8 }, { ic: 'no', story: ['japa', 'The agent disappeared with your deposit.', 'failed'] }], jp);
   CH('jp_rejected', null, 'sad', 'The embassy email says “unable to approve at this time.” You read it four times, then forward it to nobody.',

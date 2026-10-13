@@ -39,6 +39,21 @@ public/portrait-js the submodule
 ```
 Add a card: `LS.card(id, who, mood, text, [leftLabel, {wallet: -5}], [rightLabel, {heart: 8}], { dom, when, cd })` (see `cards.js`).
 
+## Money
+
+The player meets two kinds of money and the game keeps them apart in plain words:
+
+* **Cash** is the ₦ number at the top (tagged CASH). It is the Wallet bar at ₦3,500 a point, plus any cash they bought. It is game money, it can't be cashed out, and it moves with the choices they make.
+* **Real money** is their Lagos Life naira, paid through the pay sheet. Every real-money button says *Pay*.
+
+What is for sale has not changed: lucky charms (with cash, or with real money) and cash (with real money). The shop is split by who pays: *Spend your cash* and *Pay with real money*.
+
+Every number a card prints is the number it moves. One Wallet point on a card is exactly **₦4,000** (`E.CARD_NAIRA`), so `wallet: -8` is a ₦32,000 choice, the postcard shows a `−₦32,000` chip, the cash at the top says `−₦32,000` when you choose it, and the card text says "₦32k". The month's pay and bills come in on their own line ("Pay day", "Rent and food"). `test/engine.test.js` fails if a card names a price its choice doesn't charge. When you write a card with a ₦ amount, use `4000 × the wallet number`.
+
+## First-time tour
+
+`public/js/tutorial.js`: a sticky note and a pencilled arrow that point at what to do first (swipe, the four bars, the cash, what a choice costs, the inbox and menu). It runs once per player (`meta.tut`), lets every touch through, and can be restarted from the menu ("Show the tips again").
+
 ## Stories
 
 Storylines live in `public/js/stories.js`: a hook card in the deck starts one, and its chapters chain with `push` (later, with

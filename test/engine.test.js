@@ -34,6 +34,33 @@ for (const c of LS.CARDS) {
   }
 }
 for (const e of Object.values(LS.ENDINGS)) assert.ok(LS.CAST[e.who]);
+
+// The economy reads the same everywhere: a naira amount a card names is the naira the choice takes (or gives).
+// A Wallet point on a card is worth exactly ₦4,000, and the server and the HUD agree on the bar's own rate.
+{
+  const E0 = LS.Engine;
+  assert.equal(E0.CARD_NAIRA, 4000);
+  assert.equal(E0.BAR_NAIRA, require('../lib/api').RATE_WALLET, 'client and server disagree on what a Wallet bar point is worth');
+  assert.equal(E0.cashOf({ fx: { wallet: -8 } }), -32000);
+  const amount = t => { const m = /₦([\d,]+)(k)?/.exec(t); return m ? Number(m[1].replace(/,/g, '')) * (m[2] ? 1000 : 1) : null; };
+  for (const c of LS.CARDS) for (const side of ['L', 'R']) {
+    const o = c[side], n = amount(o.t);
+    if (n != null) assert.equal(Math.abs(E0.cashOf(o)), n, `${c.id} ${side} "${o.t}" says ₦${n} but the choice moves ₦${Math.abs(E0.cashOf(o))}`);
+  }
+  // card text that names a price: [card, side, naira the choice moves, the figure the text must show]
+  const named = [['mama_money', 'R', -48000, '₦48,000'], ['freelance', 'R', 40000, '₦40,000'], ['landlord_hike', 'R', -56000, '₦56,000'],
+    ['alert', 'L', 48000, '₦48,000'], ['ponzi', 'R', -56000, '₦56k'], ['ajo', 'R', 24000, '₦24,000'], ['tobi_borrow', 'R', -32000, '₦32k'],
+    ['wedding_invite', 'R', -40000, '₦40,000'], ['danfo_fight', 'R', -4000, '₦4,000'], ['mechanic', 'R', -56000, '₦56,000'],
+    ['es_levy', 'R', -20000, '₦20,000'], ['wd_planner', 'R', -24000, '₦24,000'], ['su_investor', 'R', 56000, '₦56,000'],
+    ['su_sold', 'L', 72000, '₦216,000'], ['jp_agent', 'R', -72000, '₦72,000']];
+  const probe = LS.Engine.newRun('T');
+  for (const [id, side, naira, shown] of named) {
+    const c = LS.CARDS.find(x => x.id === id); assert.ok(c, 'no card ' + id);
+    assert.equal(E0.cashOf(c[side]), naira, `${id} ${side} moves ${E0.cashOf(c[side])}, the text promises ${naira}`);
+    const text = typeof c.text === 'function' ? c.text(probe) : c.text;
+    assert.ok(text.includes(shown), `${id} text should mention ${shown}: ${text}`);
+  }
+}
 // a story chapter nobody leads to is a dead card (function-valued push/go are checked by the sim below)
 for (const c of LS.CARDS) if (c.story && c.w === 0 && !c.id.includes('/') && !reached.has(c.id)) console.log('note: reached only through a function push:', c.id);
 

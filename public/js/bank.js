@@ -1,16 +1,20 @@
-/* The shop. There is one kind of money in the game: the naira in the HUD. It is your Wallet bar (at ₦3,500 a
- * point) plus any naira you bought with real money, which the server keeps safe and adds on top. Buying
- * lucky charms spends from that one number, bought naira first, so the player never has to convert anything.
+/* The shop. Two kinds of money meet here, and the screen keeps them apart in plain words:
  *
- * What it sells:
- *   Lucky charms — with real money (Lagos Life's pay sheet), or with naira.
- *   Naira        — with real money; it lands in the same HUD number.
+ *   CASH         — the ₦ number at the top of the game. It is your character's money: your Wallet bar (₦3,500 a
+ *                  point) plus any cash you bought, which the server keeps safe and adds on top. It goes up and
+ *                  down with the choices you make. It is not real money and can't be cashed out.
+ *   REAL MONEY   — the Lagos Life naira you pay through the world's pay sheet. Every real-money button says "Pay".
+ *
+ * What it sells (unchanged):
+ *   Lucky charms — with cash, or with real money.
+ *   Cash         — with real money. It lands in the same ₦ number at the top.
+ * Spending cash lowers the Wallet bar (bought cash goes first), so the player never converts anything.
  * The prices come from the server (LS.social.shop). FALLBACK is only what we show when the server can't be
  * reached, so the list is never empty: the pay sheet shows the real price before anything is charged, and the
  * server checks every purchase before crediting it.
  *
- * Paying with Wallet naira lowers the Wallet bar, which is what ends runs at the low edge, so we always keep
- * a working margin behind and never let a charm be the thing that kills you. */
+ * Spending Wallet cash is what ends runs at the low edge, so we always keep a working margin behind and never
+ * let a charm be the thing that kills you. */
 (function (LS) {
   'use strict';
   const { h } = LS;
@@ -26,8 +30,8 @@
 
   const reason = e => {
     const c = e && e.code;
-    return c === 'daily_limit' ? 'That’s all the naira you can spend from your own pocket today. Come back tomorrow.'
-      : c === 'no_naira' ? 'Not enough naira for that.'
+    return c === 'daily_limit' ? 'That’s all the cash you can take out of your Wallet today. Come back tomorrow.'
+      : c === 'no_naira' ? 'Not enough cash for that.'
       : c === 'cancelled' ? 'No worries.'
       : c === 'offline' || c === 'session' ? 'You’re offline — the shop needs a connection.'
       : (e && e.message) || 'That didn’t go through.';
@@ -38,6 +42,8 @@
     h('button.item.pack' + (real ? '.real' : ''), { type: 'button', disabled: !!off, onclick },
       h('div.item-text', h('b', title), h('small', note)),
       h('b.price', price));
+
+  const charmsWord = n => (n === 1 ? '1 lucky charm' : `${n} lucky charms`);
 
   /** Fill `box` with the shop, and refill it after every purchase. Used by the Shop sheet and the Menu. */
   LS.renderShop = async function renderShop(box) {
@@ -58,44 +64,49 @@
     // what the HUD shows, and how much of it can actually be spent without ending the run
     const wallet = G.s ? G.s.stats.wallet : null;
     const room = wallet == null ? 0 : Math.max(0, Math.floor(wallet - KEEP));
-    const total = (wallet == null ? 0 : wallet * rate) + bank;
+    const total = G.s ? LS.Engine.cash(G.s, bank) : bank;
     const spendable = bank + room * rate;
+    const charms = G.charmCount();
 
     box.append(h('div.stash',
-      h('div', h('b', LS.naira(total)), h('small', 'your naira')),
-      h('div', h('b', String(G.charmCount())), h('small', G.charmCount() === 1 ? 'lucky charm' : 'lucky charms'))));
+      h('div', h('b', LS.naira(total)), h('small', 'your cash'), h('em', 'Rises and falls with your Wallet bar.')),
+      h('div', h('b', String(charms)), h('small', charms === 1 ? 'lucky charm' : 'lucky charms'), h('em', 'Saves you once when a bar hits the edge.'))));
 
-    // ---------------------------------------------------------------- lucky charms
-    const charmRows = live.charmPacks.map(p =>
-      offer(`${p.charms} lucky charms`, 'Pay with real money', `Pay ₦${p.naira.toLocaleString('en-NG')}`, () => buyPack(p, 'charm'), { real: true }));
+    // ---------------------------------------------------------------- spend cash
+    const cashRows = [];
     for (const n of [1, 5]) {
       const cost = n * charmNgn;
-      const note = spendable >= cost ? 'Pay with your naira'
-        : total >= cost ? `Keep ${LS.naira(KEEP * rate)} aside to stay afloat`
-        : `Need ${LS.naira(cost - total)} more naira`;
-      charmRows.push(offer(n === 1 ? '1 lucky charm' : `${n} lucky charms`, note, LS.naira(cost), () => spend(n), { off: spendable < cost }));
+      const note = spendable >= cost ? 'Comes out of your cash'
+        : total >= cost ? `Keep ${LS.naira(KEEP * rate)} in your Wallet so you don’t go broke`
+        : `You need ${LS.naira(cost - total)} more cash`;
+      cashRows.push(offer(charmsWord(n), note, LS.naira(cost), () => spend(n), { off: spendable < cost }));
     }
-    box.append(LS.ui.section('Lucky charms',
-      h('p.muted', 'A lucky charm pulls you back once when a bar hits the edge.'),
-      h('div.list', charmRows)));
+    box.append(LS.ui.section('Spend your cash',
+      h('p.muted', 'Game money only. No real money leaves your pocket.'),
+      h('div.list', cashRows)));
 
-    // ---------------------------------------------------------------- naira
-    box.append(LS.ui.section('Buy naira',
-      h('p.muted', 'It’s added to your naira at the top of the screen. It isn’t real money and can’t be cashed out.'),
-      h('div.list', live.packs.map(p => offer(`${LS.naira(p.bank)} naira`, 'Pay with real money', `Pay ₦${p.naira.toLocaleString('en-NG')}`, () => buyPack(p, 'naira'), { real: true })))));
+    // ---------------------------------------------------------------- real money
+    const realRows = live.charmPacks.map(p =>
+      offer(charmsWord(p.charms), 'Real money', `Pay ₦${p.naira.toLocaleString('en-NG')}`, () => buyPack(p, 'charm'), { real: true }));
+    for (const p of live.packs) {
+      realRows.push(offer(`${LS.naira(p.bank)} cash`, 'Real money. Added to your cash.', `Pay ₦${p.naira.toLocaleString('en-NG')}`, () => buyPack(p, 'cash'), { real: true }));
+    }
+    box.append(LS.ui.section('Pay with real money',
+      h('p.muted', 'Comes out of your Lagos Life balance, not your game cash. Cash you buy can’t be cashed out.'),
+      h('div.list', realRows)));
 
     // ---------------------------------------------------------------- actions
     const again = () => { G.updateHud(); return renderShop(box); };
 
     async function buyPack(p, what) {
       try {
-        const r = what === 'charm' ? await S.buyCharms(p.id) : await S.buyNaira(p.id);
-        G.toast(what === 'charm' ? `Lucky charms: ${G.charmCount()}` : `${LS.naira(r.bank)} naira added.`);
+        if (what === 'charm') await S.buyCharms(p.id); else await S.buyNaira(p.id);
+        G.toast(what === 'charm' ? `Lucky charms: ${G.charmCount()}` : `${LS.naira(p.bank)} cash added.`);
         again();
       } catch (e) { G.toast(reason(e)); }
     }
 
-    /** Naira bought with real money goes first; the rest comes out of the Wallet bar. */
+    /** Cash you bought goes first; the rest comes out of the Wallet bar. */
     async function spend(count) {
       try {
         const cost = count * charmNgn, fromBank = Math.min(S.bank, cost), points = Math.ceil((cost - fromBank) / rate);
@@ -111,7 +122,7 @@
     }
   };
 
-  /** The HUD's naira button opens this. */
+  /** The HUD's cash button opens this. */
   LS.showBank = function () {
     const box = h('div.bank');
     LS.sheet.open('Shop', box);
