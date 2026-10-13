@@ -210,47 +210,53 @@ try {
   check('the shop sheet opened', await cdp.eval(`!document.getElementById('sheet').hidden && !!document.querySelector('.bank')`));
   check('it shows what you have: naira and charms', await cdp.eval(`/₦/.test(document.querySelector('.stash b')?.textContent || '') && document.querySelectorAll('.stash b').length === 2`),
     await cdp.eval(`document.querySelector('.stash')?.textContent`));
+  check('the shop naira is the same number as the HUD', await cdp.eval(`document.querySelector('.bank .stash b').textContent === document.getElementById('hud-money').textContent`),
+    await cdp.eval(`document.querySelector('.bank .stash b').textContent + ' vs ' + document.getElementById('hud-money').textContent`));
   const sectionNames = await cdp.eval(`[...document.querySelectorAll('.bank h3')].map(h => h.textContent)`);
-  check('it has exactly two things to buy, said plainly', sectionNames.join('|') === 'Lucky charms|In-game naira', sectionNames.join(' | '));
+  check('it has exactly two things to buy, said plainly', sectionNames.join('|') === 'Lucky charms|Buy naira', sectionNames.join(' | '));
   check('charms can be bought with real money', await cdp.eval(`[...document.querySelectorAll('.bank .pack.real')].some(b => /lucky charms/.test(b.textContent) && /Pay ₦100/.test(b.textContent))`));
-  check('naira can be bought with real money', await cdp.eval(`[...document.querySelectorAll('.bank .pack.real')].some(b => /in-game naira/.test(b.textContent) && /Pay ₦200/.test(b.textContent))`));
-  check('the Wallet exchange is tucked away', await cdp.eval(`!!document.querySelector('.bank details.earn') && !document.querySelector('.bank details.earn').open`));
+  check('naira can be bought with real money', await cdp.eval(`[...document.querySelectorAll('.bank .pack.real')].some(b => /₦50,000 naira/.test(b.textContent) && /Pay ₦200/.test(b.textContent))`));
+  check('there is no second currency: no wallet points, no bank, no exchange', await cdp.eval(`!/wallet|in the bank|in-game naira|exchange/i.test(document.querySelector('.bank').textContent)`),
+    await cdp.eval(`document.querySelector('.bank').textContent.slice(0, 200)`));
+  check('no stale offline message while the server answers', await cdp.eval(`!/offline|Couldn.t reach|Prices load/i.test(document.querySelector('.bank').textContent)`));
   await cdp.shot('3-bank');
 
-  // exchange Wallet points for naira through the button, like a player would
-  const wallet0 = await cdp.eval(`LS.Game.s.stats.wallet`);
-  const exRes = await cdp.eval(`(async () => {
-    const sum = document.querySelector('.bank details.earn summary');
-    if (sum) sum.click();
-    const btn = [...document.querySelectorAll('.bank button')].find(b => /Turn it into naira/i.test(b.textContent));
-    if (!btn) return { error: 'no exchange button' };
-    btn.click();
-    for (let i = 0; i < 40; i++) {
-      await new Promise(r => setTimeout(r, 250));
-      const t = document.getElementById('toast').textContent || '';
-      if (/added|offline|today|Not enough/i.test(t)) return { toast: t, bank: document.querySelector('.stash b')?.textContent };
-    }
-    return { error: 'no toast' };
-  })()`);
-  check('exchanging Wallet money credits the bank', !!exRes.bank && !exRes.error, JSON.stringify(exRes));
-  const wallet1 = await cdp.eval(`LS.Game.s.stats.wallet`);
-  check('and spends the Wallet stat, never leaving it at or below zero', wallet1 < wallet0 && wallet1 > 0.5, `${wallet0.toFixed(1)} → ${wallet1.toFixed(1)}`);
-  await cdp.shot('4-bank-after-exchange');
-
-  // spend naira on a charm
+  // spend naira on a charm: it comes straight off the HUD number
+  const hud0 = await cdp.eval(`LS.Game.s.stats.wallet * 3500 + LS.social.bank`);
   const spent = await cdp.eval(`(async () => {
-    const before = LS.social.bank;
     const btn = [...document.querySelectorAll('.bank .pack:not(.real)')].find(b => /^1 lucky charm/.test(b.textContent));
     if (!btn || btn.disabled) return { error: 'no spend button', disabled: !!btn };
     btn.click();
     for (let i = 0; i < 40; i++) {
       await new Promise(r => setTimeout(r, 250));
       const t = document.getElementById('toast').textContent || '';
-      if (/Lucky charms|Not enough|offline/i.test(t)) return { toast: t, before, after: LS.social.bank };
+      if (/Lucky charms|Not enough|offline|today/i.test(t)) return { toast: t };
     }
     return { error: 'no toast' };
   })()`);
-  check('naira buys lucky charms', !!spent.after || spent.after === 0, JSON.stringify(spent));
+  check('naira buys a lucky charm', !!spent.toast && /Lucky charms/.test(spent.toast), JSON.stringify(spent));
+  await sleep(500);
+  const hud1 = await cdp.eval(`LS.Game.s.stats.wallet * 3500 + LS.social.bank`);
+  check('and the charm costs exactly ₦10,000 of the one balance', Math.round(hud0 - hud1) === 10000, `${hud0} → ${hud1}`);
+  check('the HUD shows the new balance', await cdp.eval(`document.getElementById('hud-money').textContent === LS.naira(LS.Game.s.stats.wallet * 3500 + LS.social.bank)`));
+  const wallet1 = await cdp.eval(`LS.Game.s.stats.wallet`);
+  check('the Wallet bar never drops to the edge', wallet1 > 0.5, wallet1.toFixed(1));
+  await cdp.shot('4-bank-after-charm');
+
+  // when the server can't be reached the list is still there, with a way to retry
+  await cdp.eval(`window.__shop = LS.social.shop; LS.social.shop = async () => { throw Object.assign(new Error('boom'), { code: 'error' }); }; LS.showBank()`);
+  await sleep(500);
+  check('a failed price load still lists what is for sale', await cdp.eval(`document.querySelectorAll('.bank .pack.real').length >= 4`));
+  check('and says so, with Try again', await cdp.eval(`/Couldn.t reach the shop/.test(document.querySelector('.bank').textContent) && !!document.querySelector('.bank .linkbtn')`));
+  await cdp.eval(`LS.social.shop = window.__shop; document.querySelector('.bank .linkbtn').click()`);
+  await sleep(700);
+  check('Try again clears the message once the server answers', await cdp.eval(`!/Couldn.t reach/.test(document.querySelector('.bank').textContent)`));
+
+  // the hamburger menu sells things directly too
+  await cdp.eval(`LS.sheet.close(); LS.showMenu()`);
+  await sleep(900);
+  check('the menu has the shop inline', await cdp.eval(`document.querySelectorAll('.menu .bank .pack.real').length >= 4 && /Lucky charms/.test(document.querySelector('.menu .bank').textContent)`));
+  await cdp.shot('4b-menu-shop');
 
   // ---- a story longer than the card must be readable, not clipped
   console.log('\n-- long cards --');

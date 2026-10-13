@@ -206,8 +206,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .item.pack:disabled { opacity: .55; }
 .item.pack:disabled .price { background: transparent; }
 .item.pack .item-text small { white-space: normal; }
-details.earn { margin-top: 14px; border-top: 2px dashed var(--ochre); padding-top: 8px; }
-details.earn summary { cursor: pointer; font: 400 1.05rem var(--font-marker); color: var(--ochre-deep); }
+.linkbtn { padding: 0; border: 0; background: none; font: inherit; font-weight: 700; color: var(--ochre-deep); text-decoration: underline; cursor: pointer; }
 
 /* ---- splash ---- */
 .splash { position: absolute; inset: 0; z-index: 30; display: grid; place-items: center; overflow: hidden; text-align: center; transition: opacity .35s;

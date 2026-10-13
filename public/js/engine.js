@@ -456,6 +456,7 @@
   E.life = s => ({ job: LS.JOBS[s.job].id, home: LS.HOMES[s.home].id, status: s.status, age: s.age, friends: s.friends });
 
   E.stat = (s, k) => Math.round(s.stats[k]);
-  E.moneyText = s => LS.naira(s.stats.wallet * 3500);
+  /** The one number the player sees as their money: the Wallet bar plus any naira bought with real money. */
+  E.moneyText = (s, bought = 0) => LS.naira(s.stats.wallet * 3500 + (bought || 0));
   E.isDanger = (s, k) => s.stats[k] < 22 || s.stats[k] > 80;
 })(window.LS = window.LS || {});

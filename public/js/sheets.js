@@ -58,7 +58,7 @@
       lifeRow('Work', J.title, J.blurb), lifeRow('Home', H.title, H.blurb),
       s.partner ? h('div.lrow', h('div.k', 'Partner'), h('div.v', h('div.mini', thumb(Object.assign({}, s.partner.genome), 44)), h('div', h('b', s.partner.name), h('small', LS.STATUS[s.status])))) : lifeRow('Partner', 'None yet', 'Owambes are good for that.'),
       lifeRow('Friends', String(s.friends), s.friends >= 5 ? 'A proper crew.' : 'Go to more owambes.'),
-      lifeRow('Bank', LS.naira(LS.social.bank), `${G.charmCount()} lucky charm${G.charmCount() === 1 ? '' : 's'} in hand`));
+      lifeRow('Money', E.moneyText(s, LS.social.bank), `${G.charmCount()} lucky charm${G.charmCount() === 1 ? '' : 's'} in hand`));
     const bars = h('div.statrows', LS.STAT_KEYS.map(k => h('div.srow2', h('span', LS.STATS[k].label), h('div.track', h('i', { style: { width: Math.round(s.stats[k]) + '%' }, class: 'fill f-' + k })), h('small', LS.STATS[k].blurb))));
     const meta = G.meta;
     const found = Object.keys(meta.endings || {}).length;
@@ -140,10 +140,11 @@
     sound.onclick = () => { LS.sound.set(!LS.sound.enabled); setSound(); };
     setSound();
     const online = LS.api.online;
+    const shop = h('div.bank');
+    LS.renderShop(shop);
     const body = h('div.menu',
       section('Sound', sound),
-      section('Shop', h('p.muted', `Buy lucky charms and naira. You have ${LS.naira(LS.social.bank)} in-game naira and ${G.charmCount()} lucky ${G.charmCount() === 1 ? 'charm' : 'charms'}.`),
-        h('button.btn.primary', { type: 'button', onclick: () => { Sheet.close(); LS.showBank(); } }, 'Open the shop')),
+      section('Shop', shop),
       section('Play', h('div.actions', h('button.btn', { type: 'button', onclick: () => LS.showPeople() }, 'People & stories'), h('button.btn', { type: 'button', onclick: () => LS.showBoard() }, 'Leaderboard'),
         h('button.btn', { type: 'button', onclick: () => { if (confirm('Start a new life? This one ends here.')) { Sheet.close(); G.restart(); } } }, 'New life'))),
       section('About', h('p.muted', 'Lagos Swipe is a life sim. Decide with a swipe or a tap on a postcard. Keep Wallet, Heart, Hustle and Peace off the ends, look after the people who matter, and reach 35.'),

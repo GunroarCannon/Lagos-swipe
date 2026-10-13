@@ -37,7 +37,7 @@
     }
     $('#hud-age').textContent = `AGE ${s.age}`;
     $('#hud-sub').textContent = `${LS.STATUS[s.status]} · ${LS.JOBS[s.job].title}`;
-    $('#hud-money').textContent = E.moneyText(s);
+    $('#hud-money').textContent = E.moneyText(s, LS.social.bank);
     const n = LS.social.unread;
     const b = $('#inbox-badge'); b.hidden = !n; b.textContent = n > 9 ? '9+' : n;
     const d = E.danger(s), box = $('#danger');
